@@ -18,6 +18,20 @@ final class AppState: ObservableObject {
     @Published var useFahrenheit: Bool = UserDefaults.standard.bool(forKey: "useFahrenheit") {
         didSet { UserDefaults.standard.set(useFahrenheit, forKey: "useFahrenheit") }
     }
+    /// Menu bar display configuration. Persisted as JSON in UserDefaults; a change is
+    /// normalized (invalid intervals/windows clamped) before it is saved, so a bad
+    /// value can never reach the renderer.
+    @Published var displayConfig: MenuBarDisplayConfig = MenuBarDisplayConfig.load() {
+        didSet {
+            let normalized = displayConfig.normalized()
+            if normalized != displayConfig {
+                displayConfig = normalized   // re-enters didSet, then compares equal
+                return
+            }
+            guard displayConfig != oldValue else { return }
+            displayConfig.save()
+        }
+    }
     /// Reflects the current SMAppService login-item status so the menu toggle shows the
     /// right state. Initialized from that status as the property's DEFAULT (not reassigned
     /// in init), so `didSet` does NOT fire on launch — reading the state must never

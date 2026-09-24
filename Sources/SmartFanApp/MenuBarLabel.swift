@@ -23,7 +23,13 @@ struct MenuBarLabel: View {
     }
 
     var temperatureText: String? {
-        guard let tempC = maxTemp else { return nil }
+        Self.temperatureText(maxTemp, fahrenheit: fahrenheit)
+    }
+
+    /// Integer degree reading (`48°`), or nil when the value is missing or cannot
+    /// be represented. Shared by the SwiftUI label and the `NSStatusItem` renderer.
+    static func temperatureText(_ tempC: Float?, fahrenheit: Bool) -> String? {
+        guard let tempC else { return nil }
         let display = fahrenheit ? tempC * 9 / 5 + 32 : tempC
         guard display.isFinite, let integer = Int(exactly: Double(display.rounded(.towardZero))) else { return nil }
         return "\(integer)°"
@@ -34,7 +40,10 @@ struct MenuBarLabel: View {
         return temperatureText + (fahrenheit ? "F" : "C")
     }
 
-    private var iconName: String {
+    private var iconName: String { Self.symbol(for: state) }
+
+    /// SF Symbol for a monitor state. Shared by the SwiftUI label and the status item.
+    static func symbol(for state: MonitorState) -> String {
         switch state {
         case .safetyOverride: return "exclamationmark.triangle.fill"
         case .active: return "fan.fill"

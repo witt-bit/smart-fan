@@ -47,5 +47,13 @@
   "GPU": "GPU",
   "RAM": "RAM",
   "SSD": "SSD",
-  "Profile": "Profile"
+  "Profile": "Profile",
+  "Preferences…": "Preferences…",
+  "Fans": "Fans",
+  "General": "General",
+  "Menu Bar": "Menu Bar",
+  "About": "About",
+  "Current Mode": "Current Mode",
+  "Average": "Average",
+  "Feels-like": "Feels-like"
 }

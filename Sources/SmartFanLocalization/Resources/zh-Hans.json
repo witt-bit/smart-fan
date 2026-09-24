@@ -47,5 +47,13 @@
   "GPU": "GPU",
   "RAM": "RAM",
   "SSD": "SSD",
-  "Profile": "模式"
+  "Profile": "模式",
+  "Preferences…": "首选项…",
+  "Fans": "风扇",
+  "General": "通用",
+  "Menu Bar": "菜单栏",
+  "About": "关于",
+  "Current Mode": "当前模式",
+  "Average": "均温",
+  "Feels-like": "体感温度"
 }

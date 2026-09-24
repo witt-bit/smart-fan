@@ -50,6 +50,24 @@ public struct FanInfo {
 public struct ThermalStatus: Encodable {
     public let fans: [FanStatus]
     public let temperatures: [String: Float]
+    /// Average of every sensor in `temperatures` — the menu bar "average" metric.
+    /// nil when no sensor read (never 0, so "no data" stays distinguishable).
+    public let averageTemp: Float?
+    /// Battery temperature — the menu bar "feels-like" metric. nil when this Mac
+    /// exposes no readable battery sensor.
+    public let batteryTemp: Float?
+    /// Average of the fans whose `F{i}Ac` read succeeded. nil when none read, so a
+    /// single failed fan read never drags the average down.
+    public let fanRPM: Float?
+
+    public init(fans: [FanStatus], temperatures: [String: Float],
+                averageTemp: Float? = nil, batteryTemp: Float? = nil, fanRPM: Float? = nil) {
+        self.fans = fans
+        self.temperatures = temperatures
+        self.averageTemp = averageTemp
+        self.batteryTemp = batteryTemp
+        self.fanRPM = fanRPM
+    }
 
     public struct FanStatus: Encodable {
         public let index: Int
@@ -145,10 +163,10 @@ public final class FanControl {
 
     public func fanInfo(_ index: Int) throws -> FanInfo {
         try validateFanIndex(index)
-        let actual = readFanFloat(index, template: SMCFanKey.actual)
-        let target = readFanFloat(index, template: SMCFanKey.target)
-        let minimum = readFanFloat(index, template: SMCFanKey.minimum)
-        let maximum = readFanFloat(index, template: SMCFanKey.maximum)
+        let actual = readFanFloat(index, template: SMCFanKey.actual) ?? 0
+        let target = readFanFloat(index, template: SMCFanKey.target) ?? 0
+        let minimum = readFanFloat(index, template: SMCFanKey.minimum) ?? 0
+        let maximum = readFanFloat(index, template: SMCFanKey.maximum) ?? 0
 
         let modeKey = SMCFanKey.key(modeKeyTemplate, fan: index)
         let modeResult = smc.readKey(modeKey)
@@ -333,6 +351,16 @@ public final class FanControl {
     /// caller serializes SMC access (the daemon takes smcLock per key so a full sweep
     /// never blocks a client write for more than a single read).
     public func readTemp(_ key: String) -> Float? {
+        guard let temp = readRawTemp(key) else { return nil }
+        guard SMCSensorFilter.accepts(key, temp) else { return nil }
+        return temp
+    }
+
+    /// Decode one temperature key and sanity-check its 0-150°C range, WITHOUT the
+    /// battery rejection filter. `readTemp` wraps this with the filter; the battery
+    /// ("feels-like") metric calls it directly, because battery sensors are exactly
+    /// what `readTemp` rejects.
+    func readRawTemp(_ key: String) -> Float? {
         let result = smc.readKey(key)
         guard result.success else { return nil }
         let temp: Float
@@ -344,8 +372,25 @@ public final class FanControl {
             return nil
         }
         guard temp > 0, temp < 150 else { return nil }
-        guard SMCSensorFilter.accepts(key, temp) else { return nil }
         return (temp * 10).rounded() / 10
+    }
+
+    /// Battery temperature keys read for the "feels-like" metric. `TB0T` is the
+    /// classic key; `TB1T`/`TB2T` appear alongside it on some machines.
+    static let batteryTempKeys = ["TB0T", "TB1T", "TB2T"]
+
+    /// Average of the battery sensors that read, using the key list plus whatever
+    /// `SMCSensorFilter` identified as battery via IOHID. nil when none read, so a
+    /// machine without battery sensors reports no feels-like temperature rather than 0.
+    func readBatteryTemp() -> Float? {
+        var keys = Self.batteryTempKeys
+        keys.append(contentsOf: SMCSensorFilter.batteryKeys.filter { !keys.contains($0) })
+        var values: [Float] = []
+        for key in keys {
+            if let t = readRawTemp(key) { values.append(t) }
+        }
+        guard !values.isEmpty else { return nil }
+        return ((values.reduce(0, +) / Float(values.count)) * 10).rounded() / 10
     }
 
     // MARK: - Status
@@ -354,6 +399,7 @@ public final class FanControl {
     public func status() throws -> ThermalStatus {
         let count = try fanCount()
         var fans: [ThermalStatus.FanStatus] = []
+        var actualReadings: [Float] = []
 
         for i in 0..<count {
             let info = try fanInfo(i)
@@ -365,6 +411,10 @@ public final class FanControl {
                 maxRPM: Int(info.maxRPM),
                 mode: info.mode
             ))
+            // Track a successful `F{i}Ac` read separately from fanInfo's 0-coalesced
+            // value, so a failed read is left out of the menu bar's RPM average
+            // instead of counting as a stopped fan.
+            if let actual = readFanFloat(i, template: SMCFanKey.actual) { actualReadings.append(actual) }
         }
 
         // Probe temperature keys across all known Apple Silicon generations.
@@ -378,7 +428,13 @@ public final class FanControl {
             if let t = readTemp(key) { temps[key] = t }
         }
 
-        return ThermalStatus(fans: fans, temperatures: temps)
+        let averageTemp = temps.isEmpty ? nil : temps.values.reduce(0, +) / Float(temps.count)
+        let fanRPM = actualReadings.isEmpty ? nil : actualReadings.reduce(0, +) / Float(actualReadings.count)
+
+        return ThermalStatus(fans: fans, temperatures: temps,
+                             averageTemp: averageTemp,
+                             batteryTemp: readBatteryTemp(),
+                             fanRPM: fanRPM)
     }
 
     // MARK: - Discover
@@ -419,10 +475,10 @@ public final class FanControl {
 
     // MARK: - Private Helpers
 
-    private func readFanFloat(_ fan: Int, template: String) -> Float {
+    private func readFanFloat(_ fan: Int, template: String) -> Float? {
         let key = SMCFanKey.key(template, fan: fan)
         let result = smc.readKey(key)
-        guard result.success else { return 0 }
+        guard result.success else { return nil }
         return smcBytesToFloat(result.bytes, size: result.size)
     }
 
