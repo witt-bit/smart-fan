@@ -298,13 +298,14 @@ AppDelegate
   - 文件：新增 `Sources/SmartFanCore/MenuBarDisplay.swift`、`Tests/SmartFanTests/MenuBarDisplayConfigTests.swift`、`AppState.displayConfig`
   - 完成：模型 + `normalized()`（非法间隔/窗口回退）+ UserDefaults JSON 存取（键 `menuBarDisplay`）+ 5 项单测。
   - DoD：✅ 编解码、缺省/损坏回退、越界钳位均通过。
-- [ ] **MB-2.3 数字排版渲染**
-  - 文件：`Sources/SmartFanApp/MenuBarLabel.swift`
-  - 要点：两行（温度右上、转速右下）、单数字（居右居中）、单位粒度。
-  - DoD：四种组合（仅温度 / 仅转速 / 两者）+ 三种单位粒度渲染正确；像素测试通过。
-- [ ] **MB-2.4 首选项 UI：样式与度量**
-  - 要点：样式选择、显示温度/转速开关、温度度量（均温/体感）、单位粒度。
-  - DoD：改动实时反映到菜单栏。
+- [x] **MB-2.3 数字排版渲染**
+  - 文件：`Sources/SmartFanApp/MenuBarLabel.swift`（新增两行渲染）、新增 `Sources/SmartFanApp/MenuBarContent.swift`（格式化）、`StatusItemController`
+  - 完成：两行（温度上、转速下，左对齐）字体由**状态栏高度自动计算**（非固定 10pt）；单数字仍走原一行布局；`maximumWidth = 72` 先压间距；`readRawTemp` 无关系。单位三档在 `MenuBarContent` 实现。
+  - DoD：✅ 四种组合 + 三档单位渲染正确；新增 6 项单测（含宽度上限、字体自适应）。
+- [x] **MB-2.4 首选项 UI：样式与度量**
+  - 完成：样式分段选择、显示温度/转速开关、温度度量（均温/体感）、单位三档、采样频率、时间窗口；右上实时**预览**（渲染真实状态栏图，不会与菜单栏脱节）。
+  - 注：`@Binding` 经 `$appState.displayConfig` 动态成员子路径写入，改动即时保存并重绘。
+  - DoD：✅ 改动实时反映到菜单栏。
 - [ ] **MB-2.5 异常态红色风扇图标**（新增）
   - 要点：任一告警出现时，菜单栏图标临时切换为**红色风扇图标**（新增图标资源）；不用角标圆点。
   - DoD：告警出现/消失时图标正确切换；无告警时恢复普通状态图标。

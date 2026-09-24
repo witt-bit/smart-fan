@@ -61,5 +61,20 @@
   "The background service keeps running the old build after an upgrade; re-syncing restarts it on the new one.": "后台服务在升级后仍运行旧版本；重新同步会把它重启到新版本。",
   "Homepage": "项目主页",
   "License": "许可证",
-  "Third-party notices": "第三方声明"
+  "Third-party notices": "第三方声明",
+  "Menu Bar Style": "菜单栏样式",
+  "Icon + Numbers": "图标 + 数字",
+  "Temperature Curve": "温度曲线",
+  "RPM Curve": "转速曲线",
+  "Dual Curve": "双曲线叠加",
+  "Preview": "预览",
+  "Show Temperature": "显示温度",
+  "Show RPM": "显示转速",
+  "Temperature Metric": "温度度量",
+  "Units": "单位",
+  "None": "无",
+  "Compact": "简洁",
+  "Full": "完整",
+  "Sample Interval": "采样频率",
+  "Time Window": "时间窗口"
 }

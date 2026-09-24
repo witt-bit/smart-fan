@@ -106,4 +106,84 @@ enum MenuBarLabelImage {
         image.isTemplate = !needsWarning
         return image
     }
+
+    /// Widest the whole item may get before it starts shoving its neighbours
+    /// (plan §4 V4). The gap is squeezed first; text is never truncated.
+    static let maximumWidth: CGFloat = 72
+
+    /// Two-line variant: temperature above, RPM below, to the right of the icon.
+    /// With a single value it falls back to the one-line layout, so the menu bar
+    /// keeps its shipped look when only one number is shown.
+    static func make(symbol: String, temperature: String?, rpm: String?,
+                     needsWarning: Bool, colorScheme: ColorScheme) -> NSImage {
+        guard let temperature, let rpm else {
+            return make(symbol: symbol, text: temperature ?? rpm,
+                        needsWarning: needsWarning, colorScheme: colorScheme)
+        }
+        return makeTwoLine(symbol: symbol, top: temperature, bottom: rpm,
+                           needsWarning: needsWarning, colorScheme: colorScheme)
+    }
+
+    /// Line-height-to-point-size ratio of the monospaced digit font, measured once
+    /// so the two-line size can be solved instead of hard-coded (a fixed size would
+    /// mis-fit under a different status bar height or accessibility text size).
+    private static let lineHeightRatio: CGFloat = {
+        let probe = NSFont.monospacedDigitSystemFont(ofSize: 100, weight: .regular)
+        return max(1.0, (probe.ascender - probe.descender + probe.leading) / 100)
+    }()
+
+    /// Largest font size whose two lines fit the status bar, capped at the menu bar
+    /// font so a two-line reading never looks bigger than a one-line one.
+    static func twoLineFont(statusBarThickness: CGFloat = NSStatusBar.system.thickness) -> NSFont {
+        let menuSize = NSFont.menuBarFont(ofSize: 0).pointSize
+        let available = max(statusBarThickness - 4, 14)   // 2pt margin top and bottom
+        let size = min(menuSize, max(8, available / 2 / lineHeightRatio))
+        return NSFont.monospacedDigitSystemFont(ofSize: size, weight: .regular)
+    }
+
+    private static func makeTwoLine(symbol: String, top: String, bottom: String,
+                                    needsWarning: Bool, colorScheme: ColorScheme) -> NSImage {
+        let lineFont = twoLineFont()
+        let glyph = symbols.first { $0.0 == symbol }?.1
+        let color: NSColor = needsWarning && colorScheme == .dark ? .white : .black
+        let topLine = NSAttributedString(string: top, attributes: [.font: lineFont, .foregroundColor: color])
+        let bottomLine = NSAttributedString(string: bottom, attributes: [.font: lineFont, .foregroundColor: color])
+        let textWidth = ceil(max(topLine.size().width, bottomLine.size().width))
+        let glyphWidth = glyph?.size.width ?? iconWidth
+
+        // Reserve room for a two-digit temperature and a four-digit RPM so a digit
+        // change does not resize the item, then squeeze the gap before exceeding
+        // the width cap.
+        let reserve = ceil(max(("88°" as NSString).size(withAttributes: [.font: lineFont]).width,
+                               ("8888" as NSString).size(withAttributes: [.font: lineFont]).width))
+        var gap = self.gap
+        if glyphWidth + gap + max(textWidth, reserve) > maximumWidth { gap = 1 }
+        let contentWidth = glyphWidth + gap + max(textWidth, reserve)
+        let linesHeight = ceil(topLine.size().height + bottomLine.size().height)
+        let size = NSSize(width: max(minimumSize.width, contentWidth),
+                          height: max(minimumSize.height, linesHeight))
+
+        let image = NSImage(size: size, flipped: false) { _ in
+            let contentX = (size.width - contentWidth) / 2
+            if let glyph {
+                let rect = NSRect(x: contentX, y: (size.height - glyph.size.height) / 2,
+                                  width: glyph.size.width, height: glyph.size.height)
+                glyph.draw(in: rect)
+                color.setFill()
+                rect.fill(using: .sourceAtop)
+            }
+            let textX = contentX + glyphWidth + gap
+            let topY = (size.height + linesHeight) / 2 - topLine.size().height
+            topLine.draw(at: NSPoint(x: textX, y: topY))
+            bottomLine.draw(at: NSPoint(x: textX, y: topY - bottomLine.size().height))
+            if needsWarning {
+                NSColor.systemOrange.setFill()
+                NSBezierPath(ovalIn: NSRect(x: contentX + glyphWidth - 2, y: size.height - 5,
+                                            width: 5, height: 5)).fill()
+            }
+            return true
+        }
+        image.isTemplate = !needsWarning
+        return image
+    }
 }

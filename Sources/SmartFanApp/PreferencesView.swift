@@ -195,12 +195,98 @@ private struct GeneralPreferences: View {
 // MARK: - Menu Bar
 
 private struct MenuBarPreferences: View {
+    @EnvironmentObject var appState: AppState
     @EnvironmentObject var language: AppLanguageStore
 
+    private var config: Binding<MenuBarDisplayConfig> { $appState.displayConfig }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(language.text("Menu Bar")).font(.headline)
-            Text("MB-2.4 / MB-3.3").font(.caption).foregroundStyle(.tertiary)
+        VStack(alignment: .leading, spacing: 14) {
+            Text(language.text("Menu Bar Style")).font(.headline)
+
+            Picker("", selection: config.style) {
+                Text(language.text("Icon + Numbers")).tag(MenuBarStyle.numbers)
+                Text(language.text("Temperature Curve")).tag(MenuBarStyle.temperatureCurve)
+                Text(language.text("RPM Curve")).tag(MenuBarStyle.rpmCurve)
+                Text(language.text("Dual Curve")).tag(MenuBarStyle.dualCurve)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            HStack(spacing: 10) {
+                Text(language.text("Preview")).foregroundStyle(.secondary)
+                MenuBarPreview()
+            }
+            .padding(.vertical, 2)
+
+            if appState.displayConfig.style == .numbers {
+                Divider()
+                Toggle(language.text("Show Temperature"), isOn: config.showTemperature)
+                Toggle(language.text("Show RPM"), isOn: config.showRPM)
+                PickerRow(language.text("Temperature Metric"), selection: config.temperatureMetric) {
+                    Text(language.text("Average")).tag(TemperatureMetric.average)
+                    Text(language.text("Feels-like")).tag(TemperatureMetric.feelsLike)
+                }
+            }
+
+            Divider()
+            PickerRow(language.text("Units"), selection: config.unitDisplay) {
+                Text(language.text("None")).tag(UnitDisplay.none)
+                Text(language.text("Compact")).tag(UnitDisplay.compact)
+                Text(language.text("Full")).tag(UnitDisplay.full)
+            }
+            PickerRow(language.text("Sample Interval"), selection: config.sampleInterval) {
+                ForEach(MenuBarDisplayConfig.sampleIntervals, id: \.self) { value in
+                    Text(MenuBarContent.durationLabel(value)).tag(value)
+                }
+            }
+            PickerRow(language.text("Time Window"), selection: config.window) {
+                ForEach(MenuBarDisplayConfig.windows, id: \.self) { value in
+                    Text(MenuBarContent.durationLabel(value)).tag(value)
+                }
+            }
+        }
+    }
+}
+
+/// Renders the real status-item image, so the preview cannot drift from what the
+/// menu bar actually shows.
+private struct MenuBarPreview: View {
+    @EnvironmentObject var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let readings = MenuBarContent.readings(appState.displayConfig, status: appState.latestStatus,
+                                               fahrenheit: appState.useFahrenheit)
+        Image(nsImage: MenuBarLabelImage.make(
+            symbol: MenuBarLabel.symbol(for: appState.monitorState),
+            temperature: readings.temperature, rpm: readings.rpm,
+            needsWarning: false, colorScheme: colorScheme))
+        .frame(height: NSStatusBar.system.thickness)
+        .padding(.horizontal, 6)
+        .background(RoundedRectangle(cornerRadius: 5).fill(Color.secondary.opacity(0.18)))
+    }
+}
+
+/// A label on the left, a compact pop-up on the right.
+private struct PickerRow<Value: Hashable, Content: View>: View {
+    let label: String
+    @Binding var selection: Value
+    @ViewBuilder var content: () -> Content
+
+    init(_ label: String, selection: Binding<Value>, @ViewBuilder content: @escaping () -> Content) {
+        self.label = label
+        self._selection = selection
+        self.content = content
+    }
+
+    var body: some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Picker("", selection: $selection) { content() }
+                .labelsHidden()
+                .fixedSize()
         }
     }
 }

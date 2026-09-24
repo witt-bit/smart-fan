@@ -42,13 +42,18 @@ final class StatusItemController {
         // the value is set, so refresh() reads the new state (objectWillChange would
         // fire before it).
         Publishers.CombineLatest4(
-            appState.$monitorState, appState.$maxTemp, appState.$useFahrenheit, appState.$daemonVersionMismatch
+            appState.$monitorState, appState.$latestStatus, appState.$useFahrenheit, appState.$daemonVersionMismatch
         )
         .receive(on: DispatchQueue.main)
         .sink { [weak self] _ in MainActor.assumeIsolated { self?.refresh() } }
         .store(in: &cancellables)
 
         appState.$daemonUnreachable
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in MainActor.assumeIsolated { self?.refresh() } }
+            .store(in: &cancellables)
+
+        appState.$displayConfig
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.refresh() } }
             .store(in: &cancellables)
@@ -86,14 +91,19 @@ final class StatusItemController {
         let isDark = button.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         let scheme: ColorScheme = isDark ? .dark : .light
 
-        let symbol = MenuBarLabel.symbol(for: appState.monitorState)
-        let text = MenuBarLabel.temperatureText(appState.maxTemp, fahrenheit: appState.useFahrenheit)
+        let readings = MenuBarContent.readings(appState.displayConfig, status: appState.latestStatus,
+                                               fahrenheit: appState.useFahrenheit)
         let needsWarning = appState.daemonVersionMismatch != nil || appState.daemonUnreachable
 
-        button.image = MenuBarLabelImage.make(symbol: symbol, text: text,
+        button.image = MenuBarLabelImage.make(symbol: MenuBarLabel.symbol(for: appState.monitorState),
+                                             temperature: readings.temperature, rpm: readings.rpm,
                                              needsWarning: needsWarning, colorScheme: scheme)
-        let reading = text.map { $0 + (appState.useFahrenheit ? "F" : "C") }
-            ?? language.text("Temperature unavailable")
-        button.toolTip = language.text("SmartFan: {reading}", ["reading": reading])
+        button.toolTip = tooltip(temperature: readings.temperature, rpm: readings.rpm)
+    }
+
+    private func tooltip(temperature: String?, rpm: String?) -> String {
+        if let temperature { return language.text("SmartFan: {reading}", ["reading": temperature]) }
+        if let rpm { return language.text("SmartFan: {reading}", ["reading": rpm]) }
+        return language.text("Temperature unavailable")
     }
 }
