@@ -89,13 +89,7 @@ private struct FansPreferences: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if appState.daemonUnreachable {
-                Label(language.text("Fan control unavailable"), systemImage: "exclamationmark.octagon.fill")
-                    .font(.callout)
-                    .foregroundStyle(.red)
-                Text(language.text("The background service isn't responding, so profiles and Default can't change the fans right now."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Button(language.text("Restart daemon")) { appState.restartDaemon() }
+                DaemonDownBanner(onRestart: { appState.restartDaemon() })
             }
 
             Text(language.text("Current Mode")).font(.headline)
@@ -220,10 +214,31 @@ private struct AboutPreferences: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(language.text("About")).font(.headline)
-            LabeledValue(language.text("Version"), value: SmartFanVersion.current)
-            if let update = appState.availableUpdate {
-                LabeledValue(language.text("Update available"), value: update.version)
+
+            // Both update banners live here (decided in the plan): the About page
+            // is where a user goes to find out about versions.
+            if let daemonVersion = appState.daemonVersionMismatch {
+                DaemonUpdateBanner(daemonVersion: daemonVersion)
             }
+            if let update = appState.availableUpdate {
+                UpdateAvailableBanner(update: update, onDismiss: { appState.dismissUpdate() })
+            }
+
+            LabeledValue(language.text("Version"), value: SmartFanVersion.current)
+
+            Button {
+                appState.checkForUpdatesNow()
+            } label: {
+                Label(language.text(appState.updateCheckInProgress ? "Checking…" : "Check for Updates"),
+                      systemImage: "arrow.triangle.2.circlepath")
+            }
+            .disabled(appState.updateCheckInProgress)
+
+            Divider()
+
+            Link(language.text("Homepage"), destination: URL(string: "https://github.com/witt/smart-fan")!)
+            Link(language.text("License"), destination: URL(string: "https://github.com/witt/smart-fan/blob/main/LICENSE")!)
+            Link(language.text("Third-party notices"), destination: URL(string: "https://github.com/witt/smart-fan/blob/main/NOTICE.md")!)
         }
     }
 }

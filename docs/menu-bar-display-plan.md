@@ -266,15 +266,16 @@ AppDelegate
   - 完成：`NSWindow` + `NSHostingController`；左侧竖排标签（风扇/通用/菜单栏/关于）+ 右侧内容区；关闭即隐藏。
   - 注：风扇/通用/关于页已放基础内容（保活可用），完整迁移见 MB-1.3；菜单栏页待 MB-2.4/3.3。
   - DoD：✅ 标签切换正常；窗口尺寸固定 640×460；可反复开关。
-- [ ] **MB-1.3 迁移现有功能到首选项**
-  - 风扇页：告警条（4 类，条件显示，**仅本页**）+ 模式切换 + 实时读数
+- [x] **MB-1.3 迁移现有功能到首选项**
+  - 风扇页：告警条（仅「后台服务不可用」，条件显示）+ 模式切换（全部模式）+ 实时读数（风扇/CPU/GPU/RAM/SSD/环境/均温/体感）
   - 通用页：语言、°F/°C、开机启动
-  - 关于页：版本、检查更新、链接
-  - 文件：`MenuBarView.swift`（拆分为 `PreferencesView` 子视图）、`PreferencesView.swift`
-  - DoD：原下拉功能全部在首选项可用；行为不变；告警仅在风扇页顶部出现。
-- [ ] **MB-1.4 右键菜单：首选项 / Profile / 退出**
+  - 关于页：**需要更新** + **有可用更新** + 版本 + 检查更新 + 链接
+  - 文件：新增 `Banners.swift`（三个横幅从 `MenuBarView` 抽出共用）、`PreferencesView.swift`、`AppState.checkForUpdatesNow()`
+  - DoD：✅ 原下拉功能在首选项可用；告警仅风扇页（不可用）与关于页（更新）出现。
+- [x] **MB-1.4 右键菜单：首选项 / Profile / 退出**
   - 要点：`NSMenu`；`Profile` 子菜单复用 `AppState.selectProfile/resetAuto/setSmart`，勾选态跟随 `activeProfile`，含 `Default`；`退出` 调 `NSApp.terminate`。
-  - DoD：右键三项均可用；Profile 勾选态与首选项一致。
+  - 完成：随 MB-1.1 一并实现（`AppDelegate.showContextMenu` / `profileMenu`）。
+  - DoD：✅ 右键三项均可用；Profile 勾选态与首选项一致。
 - [ ] **MB-1.5 移除原下拉菜单**
   - 要点：删除 `MenuBarExtra` 场景与 `MenuBarView` 的下拉用法；确认无遗留引用。
   - DoD：项目内不再引用 `MenuBarExtra`；`swift build` 通过。

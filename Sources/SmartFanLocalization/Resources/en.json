@@ -55,5 +55,11 @@
   "About": "About",
   "Current Mode": "Current Mode",
   "Average": "Average",
-  "Feels-like": "Feels-like"
+  "Feels-like": "Feels-like",
+  "Check for Updates": "Check for Updates",
+  "Checking…": "Checking…",
+  "The background service keeps running the old build after an upgrade; re-syncing restarts it on the new one.": "The background service keeps running the old build after an upgrade; re-syncing restarts it on the new one.",
+  "Homepage": "Homepage",
+  "License": "License",
+  "Third-party notices": "Third-party notices"
 }

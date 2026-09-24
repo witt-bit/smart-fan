@@ -60,6 +60,8 @@ final class AppState: ObservableObject {
     /// state on launch (so it shows without waiting for a network round-trip); a
     /// dismissed version is suppressed until a newer one ships.
     @Published var availableUpdate: AvailableUpdate?
+    /// True while the About page's "Check for Updates" is in flight.
+    @Published var updateCheckInProgress = false
 
     private let servicesEnabled: Bool
     private var monitor: ThermalMonitor?
@@ -353,6 +355,24 @@ final class AppState: ObservableObject {
             UserDefaults.standard.set(version, forKey: Self.updateDismissedKey)
         }
         availableUpdate = nil
+    }
+
+    /// The About page's "Check for Updates": bypass the daily gate and check now.
+    /// On failure it pulls the next check back to the retry interval, like the
+    /// background check, so a manual attempt doesn't reset the whole day.
+    func checkForUpdatesNow() {
+        guard !updateCheckInProgress else { return }
+        updateCheckInProgress = true
+        UserDefaults.standard.removeObject(forKey: Self.updateNextCheckKey)
+        Task {
+            let result = await UpdateChecker.check()
+            if case .failed = result {
+                UserDefaults.standard.set(Date().addingTimeInterval(Self.updateRetryInterval),
+                                          forKey: Self.updateNextCheckKey)
+            }
+            applyUpdateCheck(result)
+            updateCheckInProgress = false
+        }
     }
 
     // MARK: - Monitoring

@@ -55,5 +55,11 @@
   "About": "关于",
   "Current Mode": "当前模式",
   "Average": "均温",
-  "Feels-like": "体感温度"
+  "Feels-like": "体感温度",
+  "Check for Updates": "检查更新",
+  "Checking…": "检查中…",
+  "The background service keeps running the old build after an upgrade; re-syncing restarts it on the new one.": "后台服务在升级后仍运行旧版本；重新同步会把它重启到新版本。",
+  "Homepage": "项目主页",
+  "License": "许可证",
+  "Third-party notices": "第三方声明"
 }
