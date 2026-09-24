@@ -170,7 +170,8 @@ AppDelegate
 ### 配置项
 - 存储：`UserDefaults.standard`（域 `org.witt.smartfan.app`，文件 `~/Library/Preferences/org.witt.smartfan.app.plist`）
 - 新增键：**`menuBarDisplay`**（`MenuBarDisplayConfig` 的 JSON）
-- 现有键不变：`useFahrenheit`、`guiLanguage`、`selectedProfile`、`update*`
+- 新增键：**`fixedRPM`**（Int）：固定速率模式的目标 RPM，随 `selectedProfile` 一起持久化，重启后恢复
+- 现有键不变：`useFahrenheit`、`guiLanguage`、`selectedProfile`（现有值增加 `"fixed"`）、`update*`
 - 开机启动不在 UserDefaults，由 `SMAppService` 系统级注册
 
 ### 曲线历史
@@ -215,7 +216,7 @@ AppDelegate
 ### 风扇页
 - **告警条**（**仅本页**，条件显示）：**后台服务不可用**（沿用现有文案 + 横幅）
 - 当前模式：`( Smart ▾ )` + `[ Smart ]` `[ Default ]`（可直接切模式）
-- **固定速率**（新增，**模式之一**）：模式列表新增「固定速率」；选中后用**滑块**在 `[minRPM, maxRPM]` 间设定并固定风扇转速（对应原 CLI `set` 的图形化替代）
+- **固定速率**（新增，**模式之一**）：与均衡/性能/静音**平级的普通模式**；选中后用**滑块**在 `[minRPM, maxRPM]` 设定并固定风扇转速（原 CLI `set` 的图形化替代）；选择与 RPM **会记住**（`selectedProfile="fixed"` + `fixedRPM`），并出现在右键菜单
 - **不提供自定义 Profile**（仅预置模式）
 - 实时读数：各风扇 RPM、CPU/GPU/RAM/SSD/环境/均温/体感
 - ~~终端占用告警~~：**后期删除**，其能力并入上面的「固定速率」
@@ -277,9 +278,10 @@ AppDelegate
   - 文件：`docs/menu-bar-label-validation.md`、`docs/project-architecture.md`
   - DoD：说明 `NSStatusItem` 取代 `MenuBarExtra` 的原因与影响。
 - [ ] **MB-1.7 首选项风扇页：固定速率模式**（新增需求）
-  - 要点：模式列表新增「固定速率」；选中后用**滑块**在 `[minRPM, maxRPM]` 设定并固定转速；对应原 CLI `set` 的图形化替代。
+  - 要点：新增「固定速率」为**普通模式**（与均衡/性能/静音平级）；选中后用**滑块**在 `[minRPM, maxRPM]` 设定并固定转速；原 CLI `set` 的图形化替代。
+  - 持久化：`selectedProfile="fixed"` + `fixedRPM`（重启恢复）；右键菜单可切换。
   - **不做自定义 Profile**（均为预置模式）。
-  - DoD：滑块设值后风扇固定；切走或 Default 时解除。
+  - DoD：滑块设值后风扇固定；切走/Default 解除；重启后模式与 RPM 恢复。
 
 ### 阶段 P2 —— 图标+数字样式与度量
 
@@ -431,5 +433,7 @@ AppDelegate
 | Q8 | 同步哪些配置？（仅菜单栏显示相关 / 全部偏好 / 含校准与模式） |
 | Q9 | 分发与付费模式？（App Store IAP / 第三方授权 / 其他） |
 | Q10 | 未授权用户的降级行为？（本地配置可用、只是不同步） |
-| Q11 | 风扇页「固定速率」如何设计？ | **已定**：作为**模式之一**，选中后用**滑块**在 `[minRPM, maxRPM]` 设定；**不做自定义 Profile**（均预置）。 |
-| Q11.5 | 固定速率的归属与退出行为 | 待议：建议算 **App 的 hold（owner=app）**，退出 App 复位为自动。 |
+| Q11 | 风扇页「固定速率」如何设计？ | **已定**：作为**普通模式之一**（与均衡/性能/静音平级），选中后用**滑块**在 `[minRPM, maxRPM]` 设定；**不做自定义 Profile**（均预置）。 |
+| ~~Q11.5~~ | 固定速率的归属与退出行为 | **已定**：与其它模式相同（App 的 hold + 心跳维持），**选择会被记住**，不是特殊语义。 |
+| ~~Q11.6~~ | 是否出现在右键菜单 | **已定**：**所有**模式（含固定速率）都在右键菜单可切换。 |
+| ~~Q11.7~~ | 是否记住上次 RPM | **已定**：**存进配置**（`fixedRPM`）。 |
