@@ -96,7 +96,11 @@ private struct FansPreferences: View {
             Picker(language.text("Profile"), selection: Binding(
                 get: { appState.activeProfile.id },
                 set: { id in
-                    if let profile = selectableProfiles.first(where: { $0.id == id }) {
+                    // Smart has its own entry point (it also sets up the Smart monitor
+                    // state and logging); routing it through selectProfile would skip that.
+                    if id == FanProfile.smart.id {
+                        appState.setSmart()
+                    } else if let profile = selectableProfiles.first(where: { $0.id == id }) {
                         appState.selectProfile(profile)
                     }
                 }
@@ -221,12 +225,19 @@ private struct MenuBarPreferences: View {
 
             if appState.displayConfig.style == .numbers {
                 Divider()
+                // The last remaining number cannot be turned off: `normalized()` would
+                // force the temperature back on, and mutating mid-update is what the
+                // AppState didSet deliberately avoids.
                 Toggle(language.text("Show Temperature"), isOn: config.showTemperature)
+                    .disabled(appState.displayConfig.showTemperature && !appState.displayConfig.showRPM)
                 Toggle(language.text("Show RPM"), isOn: config.showRPM)
-                PickerRow(language.text("Temperature Metric"), selection: config.temperatureMetric) {
-                    Text(language.text("Average")).tag(TemperatureMetric.average)
-                    Text(language.text("Feels-like")).tag(TemperatureMetric.feelsLike)
-                }
+                    .disabled(appState.displayConfig.showRPM && !appState.displayConfig.showTemperature)
+            }
+
+            // The metric applies to the numbers and to the temperature curve.
+            PickerRow(language.text("Temperature Metric"), selection: config.temperatureMetric) {
+                Text(language.text("Average")).tag(TemperatureMetric.average)
+                Text(language.text("Feels-like")).tag(TemperatureMetric.feelsLike)
             }
 
             Divider()
@@ -235,14 +246,18 @@ private struct MenuBarPreferences: View {
                 Text(language.text("Compact")).tag(UnitDisplay.compact)
                 Text(language.text("Full")).tag(UnitDisplay.full)
             }
-            PickerRow(language.text("Sample Interval"), selection: config.sampleInterval) {
-                ForEach(MenuBarDisplayConfig.sampleIntervals, id: \.self) { value in
-                    Text(MenuBarContent.durationLabel(value)).tag(value)
+
+            // Curve sampling settings only matter for the curve styles.
+            if appState.displayConfig.style != .numbers {
+                PickerRow(language.text("Sample Interval"), selection: config.sampleInterval) {
+                    ForEach(MenuBarDisplayConfig.sampleIntervals, id: \.self) { value in
+                        Text(MenuBarContent.durationLabel(value)).tag(value)
+                    }
                 }
-            }
-            PickerRow(language.text("Time Window"), selection: config.window) {
-                ForEach(MenuBarDisplayConfig.windows, id: \.self) { value in
-                    Text(MenuBarContent.durationLabel(value)).tag(value)
+                PickerRow(language.text("Time Window"), selection: config.window) {
+                    ForEach(MenuBarDisplayConfig.windows, id: \.self) { value in
+                        Text(MenuBarContent.durationLabel(value)).tag(value)
+                    }
                 }
             }
         }

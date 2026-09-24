@@ -18,18 +18,15 @@ final class AppState: ObservableObject {
     @Published var useFahrenheit: Bool = UserDefaults.standard.bool(forKey: "useFahrenheit") {
         didSet { UserDefaults.standard.set(useFahrenheit, forKey: "useFahrenheit") }
     }
-    /// Menu bar display configuration. Persisted as JSON in UserDefaults; a change is
-    /// normalized (invalid intervals/windows clamped) before it is saved, so a bad
-    /// value can never reach the renderer.
+    /// Menu bar display configuration. Persisted as JSON in UserDefaults. A change
+    /// is normalized before it is *saved*, but the published value is never
+    /// reassigned from `didSet`: a write during a SwiftUI view update must not
+    /// republish (that is "Publishing changes from within view updates"). The
+    /// preferences UI prevents the only invalid state (both numbers off).
     @Published var displayConfig: MenuBarDisplayConfig = MenuBarDisplayConfig.load() {
         didSet {
-            let normalized = displayConfig.normalized()
-            if normalized != displayConfig {
-                displayConfig = normalized   // re-enters didSet, then compares equal
-                return
-            }
             guard displayConfig != oldValue else { return }
-            displayConfig.save()
+            displayConfig.normalized().save()
         }
     }
     /// Reflects the current SMAppService login-item status so the menu toggle shows the

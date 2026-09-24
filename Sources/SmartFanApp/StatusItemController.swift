@@ -20,6 +20,10 @@ final class StatusItemController {
     private let language: AppLanguageStore
     private var cancellables = Set<AnyCancellable>()
     private var appearanceObservation: NSKeyValueObservation?
+    /// Guards against `performClick` re-entering the click handler while the menu is
+    /// being shown. The menu/`performClick` pairing is the canonical way to give a
+    /// status item a context menu, but it must never recurse.
+    private var isShowingMenu = false
 
     /// Left click — open the preferences window.
     var onLeftClick: (() -> Void)?
@@ -69,6 +73,7 @@ final class StatusItemController {
     }
 
     @objc private func handleClick() {
+        guard !isShowingMenu else { return }
         if NSApp.currentEvent?.type == .rightMouseUp {
             onRightClick?()
         } else {
@@ -79,6 +84,9 @@ final class StatusItemController {
     /// Pop `menu` at the item, then clear it so a later left click opens the
     /// preferences window instead of re-showing the menu.
     func showMenu(_ menu: NSMenu) {
+        guard !isShowingMenu else { return }
+        isShowingMenu = true
+        defer { isShowingMenu = false }
         statusItem.menu = menu
         statusItem.button?.performClick(nil)
         statusItem.menu = nil
@@ -95,15 +103,18 @@ final class StatusItemController {
                                                fahrenheit: appState.useFahrenheit)
         let needsWarning = appState.daemonVersionMismatch != nil || appState.daemonUnreachable
 
-        button.image = MenuBarLabelImage.make(symbol: MenuBarLabel.symbol(for: appState.monitorState),
-                                             temperature: readings.temperature, rpm: readings.rpm,
-                                             needsWarning: needsWarning, colorScheme: scheme)
-        button.toolTip = tooltip(temperature: readings.temperature, rpm: readings.rpm)
-    }
+        button.image = MenuBarLabelImage.make(
+            symbol: MenuBarLabel.symbol(for: appState.monitorState),
+            temperature: readings.temperature, rpm: readings.rpm,
+            needsWarning: needsWarning, colorScheme: scheme,
+            statusBarThickness: button.bounds.height > 0 ? button.bounds.height : NSStatusBar.system.thickness)
 
-    private func tooltip(temperature: String?, rpm: String?) -> String {
-        if let temperature { return language.text("SmartFan: {reading}", ["reading": temperature]) }
-        if let rpm { return language.text("SmartFan: {reading}", ["reading": rpm]) }
-        return language.text("Temperature unavailable")
+        // The old MenuBarExtra label carried an accessibility label/value; a bare
+        // NSStatusItem has none unless it is set explicitly.
+        let reading = [readings.temperature, readings.rpm].compactMap { $0 }.joined(separator: " · ")
+        let spoken = reading.isEmpty ? language.text("Temperature unavailable") : reading
+        button.toolTip = language.text("SmartFan: {reading}", ["reading": spoken])
+        button.setAccessibilityLabel("SmartFan")
+        button.setAccessibilityValue(spoken)
     }
 }

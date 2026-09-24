@@ -162,8 +162,15 @@ public final class FanControl {
     }
 
     public func fanInfo(_ index: Int) throws -> FanInfo {
+        try readFanInfo(index).info
+    }
+
+    /// Fan info plus the raw `F{i}Ac` read (nil when it failed). `status()` uses it
+    /// so one read of the actual key feeds both the fan row and the menu bar's RPM
+    /// average, instead of reading the key twice per fan per sweep.
+    private func readFanInfo(_ index: Int) throws -> (info: FanInfo, actual: Float?) {
         try validateFanIndex(index)
-        let actual = readFanFloat(index, template: SMCFanKey.actual) ?? 0
+        let actual = readFanFloat(index, template: SMCFanKey.actual)
         let target = readFanFloat(index, template: SMCFanKey.target) ?? 0
         let minimum = readFanFloat(index, template: SMCFanKey.minimum) ?? 0
         let maximum = readFanFloat(index, template: SMCFanKey.maximum) ?? 0
@@ -179,14 +186,15 @@ public final class FanControl {
         default: mode = "unknown(\(modeValue))"
         }
 
-        return FanInfo(
+        let info = FanInfo(
             index: index,
-            actualRPM: actual,
+            actualRPM: actual ?? 0,
             targetRPM: target,
             minRPM: minimum,
             maxRPM: maximum,
             mode: mode
         )
+        return (info, actual)
     }
 
     // MARK: - Unlock
@@ -402,7 +410,7 @@ public final class FanControl {
         var actualReadings: [Float] = []
 
         for i in 0..<count {
-            let info = try fanInfo(i)
+            let (info, actual) = try readFanInfo(i)
             fans.append(ThermalStatus.FanStatus(
                 index: i,
                 actualRPM: Int(info.actualRPM),
@@ -411,10 +419,9 @@ public final class FanControl {
                 maxRPM: Int(info.maxRPM),
                 mode: info.mode
             ))
-            // Track a successful `F{i}Ac` read separately from fanInfo's 0-coalesced
-            // value, so a failed read is left out of the menu bar's RPM average
-            // instead of counting as a stopped fan.
-            if let actual = readFanFloat(i, template: SMCFanKey.actual) { actualReadings.append(actual) }
+            // Only a successful `F{i}Ac` read joins the menu bar average, so a failed
+            // read is omitted rather than counted as a stopped fan.
+            if let actual { actualReadings.append(actual) }
         }
 
         // Probe temperature keys across all known Apple Silicon generations.

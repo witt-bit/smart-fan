@@ -31,7 +31,9 @@ final class PreferencesWindowController {
     }
 
     func show() {
-        NSApp.activate(ignoringOtherApps: true)
+        // `activate()` (macOS 14+) rather than the deprecated
+        // `activate(ignoringOtherApps:)`.
+        NSApp.activate()
         window.makeKeyAndOrderFront(nil)
     }
 }

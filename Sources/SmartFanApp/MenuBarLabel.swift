@@ -111,15 +111,19 @@ enum MenuBarLabelImage {
 
     /// Two-line variant: temperature above, RPM below, to the right of the icon.
     /// With a single value it falls back to the one-line layout, so the menu bar
-    /// keeps its shipped look when only one number is shown.
+    /// keeps its shipped look when only one number is shown. `statusBarThickness`
+    /// should be the status button's real height when available, so the line size
+    /// follows the actual bar rather than the (legacy) system constant.
     static func make(symbol: String, temperature: String?, rpm: String?,
-                     needsWarning: Bool, colorScheme: ColorScheme) -> NSImage {
+                     needsWarning: Bool, colorScheme: ColorScheme,
+                     statusBarThickness: CGFloat = NSStatusBar.system.thickness) -> NSImage {
         guard let temperature, let rpm else {
             return make(symbol: symbol, text: temperature ?? rpm,
                         needsWarning: needsWarning, colorScheme: colorScheme)
         }
         return makeTwoLine(symbol: symbol, top: temperature, bottom: rpm,
-                           needsWarning: needsWarning, colorScheme: colorScheme)
+                           needsWarning: needsWarning, colorScheme: colorScheme,
+                           statusBarThickness: statusBarThickness)
     }
 
     /// Line-height-to-point-size ratio of the monospaced digit font, measured once
@@ -134,14 +138,15 @@ enum MenuBarLabelImage {
     /// font so a two-line reading never looks bigger than a one-line one.
     static func twoLineFont(statusBarThickness: CGFloat = NSStatusBar.system.thickness) -> NSFont {
         let menuSize = NSFont.menuBarFont(ofSize: 0).pointSize
-        let available = max(statusBarThickness - 4, 14)   // 2pt margin top and bottom
+        let available = max(statusBarThickness - 2, 14)   // 1pt margin top and bottom
         let size = min(menuSize, max(8, available / 2 / lineHeightRatio))
         return NSFont.monospacedDigitSystemFont(ofSize: size, weight: .regular)
     }
 
     private static func makeTwoLine(symbol: String, top: String, bottom: String,
-                                    needsWarning: Bool, colorScheme: ColorScheme) -> NSImage {
-        let lineFont = twoLineFont()
+                                    needsWarning: Bool, colorScheme: ColorScheme,
+                                    statusBarThickness: CGFloat) -> NSImage {
+        let lineFont = twoLineFont(statusBarThickness: statusBarThickness)
         let glyph = symbols.first { $0.0 == symbol }?.1
         let color: NSColor = needsWarning && colorScheme == .dark ? .white : .black
         let iconColor: NSColor = needsWarning ? .systemRed : color
