@@ -1,6 +1,6 @@
 # Temperature changes relative to upstream
 
-What MacFanPro changes in upstream ThermalForge's temperature code, and how to
+What SmartFan changes in upstream ThermalForge's temperature code, and how to
 re-apply it after merging an upstream release. Scope: the 0.2.3.16 sensor
 fixes only. The product rename and earlier fork changes are recorded in
 `docs/upstream-followups-20260921.md` and the changelog.
@@ -9,18 +9,18 @@ The logic lives in new files so merges touch as few upstream lines as possible:
 
 | New file | Purpose |
 |---|---|
-| `Sources/MacFanProCore/SMCSensorFilter.swift` | Drops SMC keys that IOHID identifies as battery sensors, and die readings below 10°C |
-| `Sources/MacFanProCore/ThermalStatus+Display.swift` | CPU row = per-core keys (Stats' M4 map on the M4 generation); headline = hotter of CPU and GPU rows |
-| `Tests/MacFanProTests/SMCSensorFilterTests.swift`, `DisplayedTemperatureTests.swift` | Coverage for both |
+| `Sources/SmartFanCore/SMCSensorFilter.swift` | Drops SMC keys that IOHID identifies as battery sensors, and die readings below 10°C |
+| `Sources/SmartFanCore/ThermalStatus+Display.swift` | CPU row = per-core keys (Stats' M4 map on the M4 generation); headline = hotter of CPU and GPU rows |
+| `Tests/SmartFanTests/SMCSensorFilterTests.swift`, `DisplayedTemperatureTests.swift` | Coverage for both |
 
 ## Upstream lines changed
 
 | File | Change | Why |
 |---|---|---|
-| `Sources/MacFanProCore/FanControl.swift`, `readTemp` | +1 line: `guard SMCSensorFilter.accepts(key, temp) else { return nil }` after the 0–150°C range check | Single choke point shared by `status()` and the daemon's safety sweep |
-| `Sources/MacFanProCore/FanControl.swift`, `thermalKeys` | +2 lines after the `Tp*` block: comment and `"Tp0V", "Tp0Y", "Tp0e", "Te05", "Te0S", "Te09", "Te0H"` | M4 core keys upstream does not probe |
-| `Sources/MacFanProApp/MenuBarView.swift`, CPU `TemperatureRow` | `peakTemp(prefixes: ["TC", "Tp"])` → `appState.latestStatus?.displayedCPUTemp` | CPU row uses core keys, not hotspot keys |
-| `Sources/MacFanProApp/AppState.swift`, `startMonitoring` `onUpdate` | The `displayPrefixes` filter → `self?.maxTemp = status.displayedPeakTemp` | Headline matches the panel |
+| `Sources/SmartFanCore/FanControl.swift`, `readTemp` | +1 line: `guard SMCSensorFilter.accepts(key, temp) else { return nil }` after the 0–150°C range check | Single choke point shared by `status()` and the daemon's safety sweep |
+| `Sources/SmartFanCore/FanControl.swift`, `thermalKeys` | +2 lines after the `Tp*` block: comment and `"Tp0V", "Tp0Y", "Tp0e", "Te05", "Te0S", "Te09", "Te0H"` | M4 core keys upstream does not probe |
+| `Sources/SmartFanApp/MenuBarView.swift`, CPU `TemperatureRow` | `peakTemp(prefixes: ["TC", "Tp"])` → `appState.latestStatus?.displayedCPUTemp` | CPU row uses core keys, not hotspot keys |
+| `Sources/SmartFanApp/AppState.swift`, `startMonitoring` `onUpdate` | The `displayPrefixes` filter → `self?.maxTemp = status.displayedPeakTemp` | Headline matches the panel |
 
 Deliberately **not** changed: `ThermalStatus.safetyPeakTemp`,
 `FanControl.safetyTempKeys`, the daemon's safety sweep, `ThermalMonitor`, the

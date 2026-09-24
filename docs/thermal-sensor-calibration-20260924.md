@@ -20,7 +20,7 @@ This document went through two earlier conclusions that were wrong:
 
 ## Method
 
-- macOS 26A428, MacFanPro 0.2.3.15. The MacFanPro app was quit so the fans
+- macOS 26A428, SmartFan 0.2.3.15. The SmartFan app was quit so the fans
   stayed under Apple's own control (`mode=system`, 0 RPM at idle) — the baseline
   a fan curve has to sit above.
 - oMLX and Docker (including its Virtualization VM) were stopped. Still running:
@@ -130,7 +130,7 @@ four per core; Stats uses one key per group. Another key in the group
 above the core temperature under load. Upstream's list includes those keys and
 the SoC hotspot keys under the CPU prefixes:
 
-| Load (0.2.3.15) | MacFanPro CPU row | Stats hottest CPU | Source of MacFanPro value |
+| Load (0.2.3.15) | SmartFan CPU row | Stats hottest CPU | Source of SmartFan value |
 |---|---|---|---|
 | CPU | 69.7 | 63.7 | `Tp06` |
 | GPU | 73.3 | 62.9 | `TCDX` |
@@ -139,9 +139,9 @@ the SoC hotspot keys under the CPU prefixes:
 Under a GPU-only load that made a CPU key hotter than any GPU sensor (69.0).
 
 **After the fix (0.2.3.16), read from both panels** (Stats captured ~7 s after
-MacFanPro, so load drift of up to ~1°C is expected):
+SmartFan, so load drift of up to ~1°C is expected):
 
-| State | MacFanPro CPU | Stats hottest CPU | MacFanPro GPU | Stats hottest GPU |
+| State | SmartFan CPU | Stats hottest CPU | SmartFan GPU | Stats hottest GPU |
 |---|---|---|---|---|
 | Idle | 49.4 | 49.4 | 48.5 | 48.5 |
 | CPU load | 64.5 | 64.2 | 54.5 | 55.5 |
@@ -157,7 +157,7 @@ the safety floor keep following the hottest point on the die.
 
 Against Stats' M4 map, on this Mac16,5 at idle:
 
-| Row | MacFanPro key | Reading | Cross-check |
+| Row | SmartFan key | Reading | Cross-check |
 |---|---|---|---|
 | SSD | `TH0x` | 32.2 | Stats "NAND" is `TH0x`; identical readings. Rises 13°C under disk I/O. |
 | RAM | `TRDX` (max of `TRD0`…`TRDf`), `TMVR` | 43.8 / 36.3 | Not cross-checked: Stats maps M4 memory to `Tm0p`/`Tm1p`/`Tm2p`, which this machine does not publish, so Stats shows no memory temperature here. The 16 `TRD*` sensors match the M4 Max's 16 memory channels and read plausibly, so the row is unchanged. |

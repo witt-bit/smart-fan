@@ -33,7 +33,7 @@ Every individual key matches Stats to 0.1°C; only the selection differs.
 
 **Suggested change:** show the per-core keys in the CPU row (a per-generation
 table, as Stats keeps), and leave the hotspot keys in `safetyPeakTemp` so fan
-control still follows the hottest point. The MacFanPro fork does this in
+control still follows the hottest point. The SmartFan fork does this in
 `ThermalStatus+Display.swift`; after it, the CPU row and Stats agree within
 0.5°C under CPU and GPU load.
 

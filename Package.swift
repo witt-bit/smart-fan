@@ -3,41 +3,44 @@
 import PackageDescription
 
 let package = Package(
-    name: "MacFanPro",
+    name: "SmartFan",
     platforms: [.macOS(.v14)],
+    products: [
+        .executable(name: "smart-fan", targets: ["SmartFanCLI"]),
+    ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
     ],
     targets: [
         .target(
-            name: "MacFanProLocalization",
+            name: "SmartFanLocalization",
             resources: [.process("Resources")]
         ),
         .target(
-            name: "MacFanProCore",
-            path: "Sources/MacFanProCore",
+            name: "SmartFanCore",
+            path: "Sources/SmartFanCore",
             linkerSettings: [
                 .linkedFramework("Metal"),
             ]
         ),
         .executableTarget(
-            name: "macfanpro",
+            name: "SmartFanCLI",
             dependencies: [
-                "MacFanProCore",
-                "MacFanProLocalization",
+                "SmartFanCore",
+                "SmartFanLocalization",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
-            path: "Sources/macfanpro"
+            path: "Sources/SmartFanCLI"
         ),
         .executableTarget(
-            name: "MacFanProApp",
-            dependencies: ["MacFanProCore", "MacFanProLocalization"],
-            path: "Sources/MacFanProApp"
+            name: "SmartFanApp",
+            dependencies: ["SmartFanCore", "SmartFanLocalization"],
+            path: "Sources/SmartFanApp"
         ),
         .testTarget(
-            name: "MacFanProTests",
-            dependencies: ["MacFanProCore", "MacFanProApp", "MacFanProLocalization"],
-            path: "Tests/MacFanProTests"
+            name: "SmartFanTests",
+            dependencies: ["SmartFanCore", "SmartFanApp", "SmartFanLocalization"],
+            path: "Tests/SmartFanTests"
         ),
     ]
 )

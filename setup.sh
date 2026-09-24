@@ -4,12 +4,12 @@ set -euo pipefail
 cd "$(dirname "$0")"
 swift build -c release
 bin_dir="$(swift build -c release --show-bin-path)"
-if [ ! -f MacFanPro.icns ]; then
+if [ ! -f SmartFan.icns ]; then
     swift Scripts/generate-icon.swift
-    iconutil -c icns MacFanPro.iconset -o MacFanPro.icns
+    iconutil -c icns SmartFan.iconset -o SmartFan.icns
 fi
-"$bin_dir/macfanpro" build-app --binary "$bin_dir/MacFanProApp" \
-    --icon MacFanPro.icns --dest "$bin_dir/MacFanPro.app"
-codesign --force --deep --sign - "$bin_dir/MacFanPro.app"
-sudo "$bin_dir/macfanpro" install "$@"
-open /Applications/MacFanPro.app
+"$bin_dir/smart-fan" build-app --binary "$bin_dir/SmartFanApp" \
+    --icon SmartFan.icns --dest "$bin_dir/SmartFan.app"
+codesign --force --deep --sign - "$bin_dir/SmartFan.app"
+sudo "$bin_dir/smart-fan" install "$@"
+open /Applications/SmartFan.app
