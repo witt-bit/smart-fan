@@ -36,7 +36,7 @@
 
 | 度量 | 定义 |
 |---|---|
-| 均温 `averageTemp` | `ThermalStatus.temperatures` 中**所有值**的算术平均 |
+| 均温 `averageTemp` | `ThermalStatus.temperatures` 中**所有值**的算术平均（**包含**电池传感器，见 Q4） |
 | 体感温度 `batteryTemp` | 电池温度（先取 `TB0T`；缺失时回退 `TB1T`/`TB2T`） |
 | 转速 `fanRPM` | `ThermalStatus.fans[].actualRPM` 的多风扇**平均**（仅统计**读取成功**的风扇；单扇即该扇）——见 Q1 |
 | 峰值温度 `safetyPeakTemp` | 现有实现，保留（安全兜底用，不受本次影响） |
@@ -56,16 +56,26 @@
 
 - 采样频率：`1 / 2 / 3 / 5 / 10` 秒（默认 **1 秒**）
 - 窗口长度：`10 / 30 / 60` 秒、`3` 分钟（默认 **60 秒**）
-- 单位显示粒度（`UnitDisplay`）：`none`（`52` / `3210`）、`compact`（`52°` / `3210`）、`full`（`52°C` / `3210 RPM`）
+- 单位显示粒度（`UnitDisplay`）：
 
-## 5. 配置数据模型（草案）
+| 档位 | 温度 | 转速 |
+|---|---|---|
+| `none` | `48` | `2318` |
+| `compact`（默认） | `48°` | `2318` |
+| `full` | `48°C` | `2318 RPM` |
+
+温度数值按**整数**显示（`48.2°C → 48°`）。
+
+**曲线样式不显示图标**，只有一个曲线小窗。
+
+## 5. 配置数据模型（**已冻结**）
 
 ```swift
 public enum MenuBarStyle: String, Codable, CaseIterable {
     case numbers, temperatureCurve, rpmCurve, dualCurve
 }
 public enum TemperatureMetric: String, Codable, CaseIterable {
-    case average    // 均温
+    case average    // 均温（所有传感器平均，含电池）
     case feelsLike  // 体感（电池）
 }
 public enum UnitDisplay: String, Codable, CaseIterable {
@@ -82,7 +92,8 @@ public struct MenuBarDisplayConfig: Codable, Equatable {
 }
 ```
 
-持久化：JSON 编码进 `UserDefaults`（键 `menuBarDisplay`），坏数据回退默认。
+- 持久化：JSON 编码进 `UserDefaults`（键 `menuBarDisplay`），坏数据回退默认。
+- 温度度量对**数字与温度曲线共用**（Q3）。
 
 ## 6. 架构
 
@@ -143,10 +154,10 @@ AppDelegate
 
 ### 阶段 P0 —— 规格冻结
 
-- [ ] **MB-0.1 确认开放问题**（见 §8）
-  - DoD：Q1–Q4 全部有结论，回填本文档。
-- [ ] **MB-0.2 冻结 `MenuBarDisplayConfig` 字段**
-  - DoD：字段名/默认值/持久化键确定。
+- [x] **MB-0.1 确认开放问题**（见 §8）
+  - 结论：Q1–Q4 已定（§9）；Q5 单位三档、Q6 默认值、Q7 曲线不显图标 已定。
+- [x] **MB-0.2 冻结 `MenuBarDisplayConfig` 字段**
+  - 结论：见 §5（已冻结）。
 
 ### 阶段 P1 —— 状态栏项 + 首选项窗口骨架
 
@@ -229,8 +240,11 @@ AppDelegate
 |---|---|---|
 | ~~Q1~~ | 多风扇转速取值 | **已定**：所有风扇**平均**，仅统计读取成功的风扇（详见 §3、MB-2.1）。首选项可切 最大 / fan0。 |
 | ~~Q2~~ | 首选项打开方式 / 下拉菜单去留 | **已定**：左键 → 首选项窗口；右键 → 菜单（`首选项…` / `Profile` 子菜单 / `退出`）；原下拉菜单**下线**，内容迁入首选项（布局见 §7）。 |
-| Q3 | 数字样式中「温度」用哪个度量 | 默认**均温**，首选项可切**体感温度**（单选） |
-| Q4 | 均温是否包含电池传感器 | 包含（按「所有传感器」字面）；如需排除另议 |
+| ~~Q3~~ | 数字样式中「温度」用哪个度量 | **已定**：一个「温度度量」选择器（均温 / 体感温度），默认**均温**，**数字与温度曲线共用**。 |
+| ~~Q4~~ | 均温是否包含电池传感器 | **已定**：**包含**（按「所有传感器」字面）。 |
+| ~~Q5~~ | 单位显示粒度 | **已定**：三档 `none/compact/full`，默认 `compact`；温度取整。 |
+| ~~Q6~~ | 默认值与默认样式 | **已定**：图标+数字 / 温度开 / 转速关 / 均温 / compact / 双曲线叠加 / 1s / 60s。 |
+| ~~Q7~~ | 曲线样式是否显示图标 | **已定**：不显示，只有曲线小窗。 |
 
 ## 10. 不在本次范围
 
