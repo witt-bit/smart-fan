@@ -340,7 +340,7 @@ AppDelegate
 
 ---
 
-## 10. 已决问题汇总（Q1–Q7，均已定）
+## 10. 已决问题汇总（Q1–Q11，均已定）
 
 | 编号 | 问题 | 结论 |
 |---|---|---|
@@ -351,6 +351,10 @@ AppDelegate
 | ~~Q5~~ | 单位显示粒度 | **已定**：三档 `none/compact/full`，默认 `compact`；温度取整。 |
 | ~~Q6~~ | 默认值与默认样式 | **已定**：图标+数字 / 温度开 / 转速关 / 均温 / compact / 双曲线叠加 / 1s / 60s。 |
 | ~~Q7~~ | 曲线样式是否显示图标 | **已定**：不显示，只有曲线小窗。 |
+| ~~Q11~~ | 风扇页「固定速率」如何设计？ | **已定**：作为**普通模式之一**（与均衡/性能/静音平级），选中后用**滑块**在 `[minRPM, maxRPM]` 设定；**不做自定义 Profile**（均预置）。 |
+| ~~Q11.5~~ | 固定速率的归属与退出行为 | **已定**：与其它模式相同（App 的 hold + 心跳维持），**选择会被记住**，不是特殊语义。 |
+| ~~Q11.6~~ | 是否出现在右键菜单 | **已定**：**所有**模式（含固定速率）都在右键菜单可切换。 |
+| ~~Q11.7~~ | 是否记住上次 RPM | **已定**：**存进配置**（`fixedRPM`）。 |
 
 ## 11. 性能：实测基线与发布前专项（**本期不实现**）
 
@@ -433,7 +437,53 @@ AppDelegate
 | Q8 | 同步哪些配置？（仅菜单栏显示相关 / 全部偏好 / 含校准与模式） |
 | Q9 | 分发与付费模式？（App Store IAP / 第三方授权 / 其他） |
 | Q10 | 未授权用户的降级行为？（本地配置可用、只是不同步） |
-| Q11 | 风扇页「固定速率」如何设计？ | **已定**：作为**普通模式之一**（与均衡/性能/静音平级），选中后用**滑块**在 `[minRPM, maxRPM]` 设定；**不做自定义 Profile**（均预置）。 |
-| ~~Q11.5~~ | 固定速率的归属与退出行为 | **已定**：与其它模式相同（App 的 hold + 心跳维持），**选择会被记住**，不是特殊语义。 |
-| ~~Q11.6~~ | 是否出现在右键菜单 | **已定**：**所有**模式（含固定速率）都在右键菜单可切换。 |
-| ~~Q11.7~~ | 是否记住上次 RPM | **已定**：**存进配置**（`fixedRPM`）。 |
+
+---
+
+## 14. 本地化清单（新增字符串）
+
+- key = 英文源文本（`LocalizationCatalog` 约定）；缺翻译时回退英文。
+- 繁体由 `scripts/update-traditional.swift` 从简体生成（**不手写**）。
+- 实现时需检查与现有键的**碰撞**（如 `None`/`Full`/`Average` 等通用词）。
+- 现有键复用不改（FANS / Fan {index} / {rpm} RPM / TEMPERATURES / Ambient / PROFILE / Silent (Apple Default) / Balanced / Performance / Max / Smart / Default / Launch at Login / Quit / Language / Version / °F / °C / CPU / GPU / RAM / SSD / Profile / 各告警文案）。
+
+| key（英文） | 简体中文 |
+|---|---|
+| Preferences… | 首选项… |
+| Fans | 风扇 |
+| General | 通用 |
+| Menu Bar | 菜单栏 |
+| About | 关于 |
+| Current Mode | 当前模式 |
+| Fixed Rate | 固定速率 |
+| Fan speed | 风扇转速 |
+| Check for Updates | 检查更新 |
+| Menu Bar Style | 菜单栏样式 |
+| Icon + Numbers | 图标 + 数字 |
+| Temperature Curve | 温度曲线 |
+| RPM Curve | 转速曲线 |
+| Dual Curve | 双曲线叠加 |
+| Preview | 预览 |
+| Show Temperature | 显示温度 |
+| Show RPM | 显示转速 |
+| Temperature Metric | 温度度量 |
+| Average | 均温 |
+| Feels-like | 体感温度 |
+| Units | 单位 |
+| None | 无 |
+| Compact | 简洁 |
+| Full | 完整 |
+| Sample Interval | 采样频率 |
+| Time Window | 时间窗口 |
+| 1 second | 1 秒 |
+| 2 seconds | 2 秒 |
+| 3 seconds | 3 秒 |
+| 5 seconds | 5 秒 |
+| 10 seconds | 10 秒 |
+| 30 seconds | 30 秒 |
+| 60 seconds | 60 秒 |
+| 3 minutes | 3 分钟 |
+| Homepage | 项目主页 |
+| License | 许可证 |
+| Third-party notices | 第三方声明 |
+| The background service is running an older build than the app. Run "sudo smart-fan install" to re-sync it. | 后台服务运行的版本比 App 旧。运行 “sudo smart-fan install” 重新同步。 |
