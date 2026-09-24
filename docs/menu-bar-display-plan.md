@@ -265,6 +265,10 @@ AppDelegate
   - 要点：无电池机型、无 `TB*` 键、多风扇机型的回退。
   - DoD：缺失度量不显示为 `0`，而是隐藏或显示占位。
 
+### 阶段 P5 —— 配置项 iCloud 自动同步（收费，**后续版本**）
+
+见 §13。本阶段**不在本次范围**。
+
 ---
 
 ## 10. 已决问题汇总（Q1–Q7，均已定）
@@ -314,3 +318,48 @@ AppDelegate
 - 独立 Settings Scene（用 `NSWindow` + `NSHostingController` 实现）。
 - 曲线导出/历史持久化。
 - **性能优化（自适应轮询等）**：推迟到 1.0 发布前专项（见 §11）。
+- **配置项 iCloud 同步与收费**：后续版本（见 §13）。
+
+---
+
+## 13. 后续版本：配置项 iCloud 自动同步（收费功能）
+
+**目的**：把跨设备同步做成**付费能力**，为长期维护提供收入来源（功能可维护性）。
+
+**范围（待定，见 Q8）**：跨设备同步配置项（`menuBarDisplay`、`useFahrenheit`、`guiLanguage`、`selectedProfile` 等）。
+
+### 前置条件（**当前架构不满足，需先解决**）
+
+| 项 | 现状 | 需要 |
+|---|---|---|
+| 代码签名 | 临时签名 `codesign -s -`（ad-hoc） | 真实 Team 签名 + provisioning profile |
+| 分发渠道 | Homebrew / 源码构建（本地 ad-hoc 签名） | 确定 App Store / Developer ID 公证 / 第三方授权 |
+| iCloud 能力 | 无 | iCloud 容器 + `com.apple.developer.ubiquity-kvstore-identifier` 权限 |
+| 付费 | 无 | StoreKit 2（仅 App Store）或第三方 license（Lemon Squeezy 等） |
+
+> 关键约束：**iCloud 权限要求真实签名**，当前的 ad-hoc 签名与 Homebrew 源码构建用不了；且 **StoreKit IAP 仅限 App Store 分发**。
+
+### 技术方案（待定）
+
+- **同步**：`NSUbiquitousKeyValueStore`（键值，≤1MB，适合小配置）或 CloudKit（结构化）。
+  - 冲突：后写覆盖 + `NSUbiquitousKeyValueStoreDidChangeExternallyNotification`。
+  - 隐私：需用户明确开启；当前 App「不向任何地方发送用户信息」的立场要相应更新。
+- **付费门槛**：App Store IAP vs 第三方授权 key。
+  - 注意：MIT 协议 + 源码可构建 → 付费门槛理论上可被绕过；需决定许可策略（open-core / 换协议）。
+
+### 任务（后续版本）
+
+- [ ] **MB-5.1 决策：分发与付费模式**（App Store IAP / 第三方授权 / 其他）
+- [ ] **MB-5.2 签名与权限改造**（Developer 账号、证书、entitlements、公证流程）
+- [ ] **MB-5.3 同步层**（`NSUbiquitousKeyValueStore` + 合并策略 + 开关）
+- [ ] **MB-5.4 付费门槛**（license/StoreKit 校验 + 未授权时的降级行为）
+- [ ] **MB-5.5 首选项 UI**（同步开关、授权状态、隐私说明）
+- [ ] **MB-5.6 文档与合规**（隐私政策、许可策略、分发说明）
+
+### 待确认
+
+| 编号 | 问题 |
+|---|---|
+| Q8 | 同步哪些配置？（仅菜单栏显示相关 / 全部偏好 / 含校准与模式） |
+| Q9 | 分发与付费模式？（App Store IAP / 第三方授权 / 其他） |
+| Q10 | 未授权用户的降级行为？（本地配置可用、只是不同步） |
