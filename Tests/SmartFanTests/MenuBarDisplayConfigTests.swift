@@ -57,12 +57,13 @@ struct MenuBarDisplayConfigTests {
         #expect(MenuBarDisplayConfig.load(from: defaults).window == 60)
     }
 
-    @Test("numbers style keeps at least one number")
-    func numbersKeepsOne() {
-        let bad = MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: false)
-        #expect(bad.normalized().showTemperature == true)
-        // Curve styles are unaffected by the numbers rule.
-        let curves = MenuBarDisplayConfig(style: .dualCurve, showTemperature: false, showRPM: false)
-        #expect(curves.normalized() == curves)
+    @Test("Both numbers may be off (an icon-only item is a valid choice)")
+    func bothNumbersMayBeOff() {
+        let off = MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: false)
+        #expect(off.normalized() == off)
+        let defaults = freshDefaults()
+        off.save(to: defaults)
+        #expect(MenuBarDisplayConfig.load(from: defaults).showTemperature == false)
+        #expect(MenuBarDisplayConfig.load(from: defaults).showRPM == false)
     }
 }

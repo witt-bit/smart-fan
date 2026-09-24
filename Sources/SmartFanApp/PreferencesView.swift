@@ -225,13 +225,9 @@ private struct MenuBarPreferences: View {
 
             if appState.displayConfig.style == .numbers {
                 Divider()
-                // The last remaining number cannot be turned off: `normalized()` would
-                // force the temperature back on, and mutating mid-update is what the
-                // AppState didSet deliberately avoids.
+                // Both may be off: an icon-only item is a valid choice.
                 Toggle(language.text("Show Temperature"), isOn: config.showTemperature)
-                    .disabled(appState.displayConfig.showTemperature && !appState.displayConfig.showRPM)
                 Toggle(language.text("Show RPM"), isOn: config.showRPM)
-                    .disabled(appState.displayConfig.showRPM && !appState.displayConfig.showTemperature)
             }
 
             // The metric applies to the numbers and to the temperature curve.

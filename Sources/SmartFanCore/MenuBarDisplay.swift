@@ -77,15 +77,11 @@ public struct MenuBarDisplayConfig: Codable, Equatable, Sendable {
 
     /// Clamp out-of-range values back to the allowed set. Applied to decoded input
     /// so a hand-edited plist can't put the renderer into a 0-second or 1-point state.
+    /// Both numbers may be off — an icon-only item is a valid choice.
     public func normalized() -> MenuBarDisplayConfig {
         var copy = self
         if !Self.sampleIntervals.contains(copy.sampleInterval) { copy.sampleInterval = 1 }
         if !Self.windows.contains(copy.window) { copy.window = 60 }
-        // `numbers` needs at least one number; an icon-only item would leave no
-        // visible hint of the setting, so keep the temperature on.
-        if copy.style == .numbers && !copy.showTemperature && !copy.showRPM {
-            copy.showTemperature = true
-        }
         return copy
     }
 }
