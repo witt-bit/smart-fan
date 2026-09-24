@@ -38,7 +38,7 @@
 |---|---|
 | 均温 `averageTemp` | `ThermalStatus.temperatures` 中**所有值**的算术平均 |
 | 体感温度 `batteryTemp` | 电池温度（先取 `TB0T`；缺失时回退 `TB1T`/`TB2T`） |
-| 转速 `fanRPM` | `ThermalStatus.fans[].actualRPM` 的取值（多风扇规则见 Q1，默认**平均**） |
+| 转速 `fanRPM` | `ThermalStatus.fans[].actualRPM` 的多风扇**平均**（仅统计**读取成功**的风扇；单扇即该扇）——见 Q1 |
 | 峰值温度 `safetyPeakTemp` | 现有实现，保留（安全兜底用，不受本次影响） |
 
 ## 4. 显示样式规格
@@ -102,7 +102,44 @@ AppDelegate
 
 ---
 
-## 7. 任务清单
+## 7. 首选项窗口布局（定稿）
+
+`NSWindow` + `NSHostingController`。**左侧竖排标签**，右侧内容区。标签顺序：**风扇 → 通用 → 菜单栏 → 关于**。
+
+```
+╭─ SmartFan 首选项 ───────────────────────────────────────────────╮
+│ ┌──────────┐ ┌────────────────────────────────────────────────┐ │
+│ │ 风扇     │ │                                                 │ │
+│ │ 通用     │ │   （当前页内容）                                │ │
+│ │ 菜单栏   │ │                                                 │ │
+│ │ 关于     │ │                                                 │ │
+│ └──────────┘ └────────────────────────────────────────────────┘ │
+╰─────────────────────────────────────────────────────────────────╯
+```
+
+### 风扇页
+- **告警条**（条件显示，**仅本页顶部**）：后台服务不可用 / 需要更新 / 终端占用 / 有可用更新
+- 当前模式：`( Smart ▾ )` + `[ Smart ]` `[ Default ]`（可直接切模式）
+- 实时读数：各风扇 RPM、CPU/GPU/RAM/SSD/环境/体感温度
+
+### 通用页
+- 语言、°F/°C、开机启动
+
+### 菜单栏页
+- 显示样式：图标+数字 / 温度曲线 / 转速曲线 / 双曲线叠加
+- **预览**：实时预览当前设置下的菜单栏外观
+- 数字选项（样式=图标+数字 时可用）：显示温度/转速、温度度量、单位
+- 曲线选项（样式=曲线 时可用）：曲线内容、采样频率、时间窗口
+
+### 关于页
+- 版本、检查更新、链接
+
+**菜单栏右键菜单**：`首选项…` / `Profile`（子菜单）/ `退出`。
+首选项窗口**不**再放退出入口。
+
+---
+
+## 8. 任务清单
 
 ### 阶段 P0 —— 规格冻结
 
@@ -115,22 +152,24 @@ AppDelegate
 
 - [ ] **MB-1.1 自定义 `NSStatusItem` 替换 `MenuBarExtra`**
   - 文件：`Sources/SmartFanApp/SmartFanApp.swift`、新增 `Sources/SmartFanApp/StatusItemController.swift`
-  - 要点：`NSStatusBar.system.statusItem`；`button.sendAction(on: [.leftMouseUp, .rightMouseUp])`；按 `NSApp.currentEvent?.type` 分流；保持 `.accessory` 激活策略、单实例检查、退出时按 owner 复位风扇的现有逻辑。
-  - DoD：图标正常显示；左右键分别触发不同行为；无 Dock 图标；单实例仍生效。
-- [ ] **MB-1.2 首选项窗口**
+  - 要点：**左键 → 打开首选项窗口；右键 → 菜单（`首选项…` / `Profile` 子菜单 / `退出`）**。`button.sendAction(on: [.leftMouseUp, .rightMouseUp])` + 按 `NSApp.currentEvent?.type` 分流；保留 `.accessory` 激活策略、单实例检查、退出时按 owner 复位风扇的现有逻辑。
+  - DoD：图标正常显示；左右键分别触发；无 Dock 图标；单实例仍生效。
+- [ ] **MB-1.2 首选项窗口（布局见 §7）**
   - 文件：新增 `Sources/SmartFanApp/PreferencesWindowController.swift`、`Sources/SmartFanApp/PreferencesView.swift`
-  - 要点：`NSWindow` + `NSHostingController<PreferencesView>`；`NSApp.activate`；关闭即隐藏（不退出）；可重复打开。
-  - DoD：左键打开且可反复开关；窗口尺寸随内容自适应；不产生第二个实例。
-- [ ] **MB-1.3 迁移现有设置到首选项**
-  - 迁移项：语言、°F/°C、开机启动、版本信息、更新提示、Quit。
-  - 文件：`MenuBarView.swift`（拆分/精简）、`PreferencesView.swift`
-  - DoD：原下拉菜单中的功能在首选项里全部可用；行为不变。
-- [ ] **MB-1.4 右键 Profile 菜单**
-  - 要点：复用 `AppState.selectProfile/resetAuto/setSmart`；勾选态跟随 `activeProfile`；含 Default。
-  - DoD：右键菜单可切换全部 Profile，状态与首选项/菜单栏图标一致。
-- [ ] **MB-1.5 下拉菜单瘦身**
-  - 决策：`MenuBarView` 是否保留（如保留则只做 Profile + 打开首选项入口）或整体下线。
-  - DoD：与 Q2 结论一致。
+  - 要点：`NSWindow` + `NSHostingController`；左侧竖排标签（风扇/通用/菜单栏/关于）+ 右侧内容区；`NSApp.activate`；关闭即隐藏（不退出）；可重复打开。
+  - DoD：左侧标签切换正常；窗口尺寸随内容自适应；可反复开关，不产生第二个实例。
+- [ ] **MB-1.3 迁移现有功能到首选项**
+  - 风扇页：告警条（4 类，条件显示，**仅本页**）+ 模式切换 + 实时读数
+  - 通用页：语言、°F/°C、开机启动
+  - 关于页：版本、检查更新、链接
+  - 文件：`MenuBarView.swift`（拆分为 `PreferencesView` 子视图）、`PreferencesView.swift`
+  - DoD：原下拉功能全部在首选项可用；行为不变；告警仅在风扇页顶部出现。
+- [ ] **MB-1.4 右键菜单：首选项 / Profile / 退出**
+  - 要点：`NSMenu`；`Profile` 子菜单复用 `AppState.selectProfile/resetAuto/setSmart`，勾选态跟随 `activeProfile`，含 `Default`；`退出` 调 `NSApp.terminate`。
+  - DoD：右键三项均可用；Profile 勾选态与首选项一致。
+- [ ] **MB-1.5 移除原下拉菜单**
+  - 要点：删除 `MenuBarExtra` 场景与 `MenuBarView` 的下拉用法；确认无遗留引用。
+  - DoD：项目内不再引用 `MenuBarExtra`；`swift build` 通过。
 - [ ] **MB-1.6 更新架构文档**
   - 文件：`docs/menu-bar-label-validation.md`、`docs/project-architecture.md`
   - DoD：说明 `NSStatusItem` 取代 `MenuBarExtra` 的原因与影响。
@@ -139,8 +178,9 @@ AppDelegate
 
 - [ ] **MB-2.1 核心度量**
   - 文件：`Sources/SmartFanCore/FanControl.swift`、`Sources/SmartFanCore/ThermalStatus+Display.swift`
-  - 要点：`ThermalStatus.averageTemp`（所有传感器平均）；`batteryTemp`（新增电池键读取，绕过 `SMCSensorFilter.batteryKeys` 剔除；补读 `TB1T`/`TB2T`）；`fanRPM`（多风扇规则）。
-  - DoD：本机 `status` 可解析出均温/体感温度/转速；电池键缺失时安全返回 `nil`。
+  - 要点：`ThermalStatus.averageTemp`（所有传感器平均）；`batteryTemp`（新增电池键读取，绕过 `SMCSensorFilter.batteryKeys` 剔除；补读 `TB1T`/`TB2T`）；`fanRPM` = **各风扇 `F{i}Ac` 的平均，仅统计读取成功者**。
+  - 注意：`readFanFloat` 目前失败静默返回 `0`，与「风扇停转」无法区分；平均前必须保留**读取成功标志**，否则读失败的扇会拉低平均值。
+  - DoD：本机 `status` 可解析出均温/体感温度/转速；电池键缺失、风扇读失败时安全降级（不当作 0 参与平均）。
 - [ ] **MB-2.2 `MenuBarDisplayConfig` + 持久化**
   - 文件：新增 `Sources/SmartFanCore/MenuBarDisplay.swift`（模型）+ `AppState` 读写
   - DoD：配置可存取；损坏数据回退默认；单元测试覆盖编解码。
@@ -183,16 +223,16 @@ AppDelegate
 
 ---
 
-## 8. 开放问题（默认值待确认）
+## 9. 开放问题（默认值待确认）
 
-| 编号 | 问题 | 建议默认 |
+| 编号 | 问题 | 结论 |
 |---|---|---|
-| Q1 | 多风扇转速取值 | **所有风扇平均**（可切 最大 / fan0） |
-| Q2 | 首选项打开方式 / 下拉菜单去留 | **左键 → 首选项**，**右键 → Profile 菜单**；下拉菜单下线 |
+| ~~Q1~~ | 多风扇转速取值 | **已定**：所有风扇**平均**，仅统计读取成功的风扇（详见 §3、MB-2.1）。首选项可切 最大 / fan0。 |
+| ~~Q2~~ | 首选项打开方式 / 下拉菜单去留 | **已定**：左键 → 首选项窗口；右键 → 菜单（`首选项…` / `Profile` 子菜单 / `退出`）；原下拉菜单**下线**，内容迁入首选项（布局见 §7）。 |
 | Q3 | 数字样式中「温度」用哪个度量 | 默认**均温**，首选项可切**体感温度**（单选） |
 | Q4 | 均温是否包含电池传感器 | 包含（按「所有传感器」字面）；如需排除另议 |
 
-## 9. 不在本次范围
+## 10. 不在本次范围
 
 - 体感温度的真实算法（当前仅取电池温度）。
 - 菜单栏分段**拖动排序**（先做固定顺序 + 显隐）。
