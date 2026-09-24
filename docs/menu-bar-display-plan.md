@@ -113,7 +113,39 @@ AppDelegate
 
 ---
 
-## 7. 首选项窗口布局（定稿）
+## 7. 数据与存储
+
+### 配置项
+- 存储：`UserDefaults.standard`（域 `org.witt.smartfan.app`，文件 `~/Library/Preferences/org.witt.smartfan.app.plist`）
+- 新增键：**`menuBarDisplay`**（`MenuBarDisplayConfig` 的 JSON）
+- 现有键不变：`useFahrenheit`、`guiLanguage`、`selectedProfile`、`update*`
+- 开机启动不在 UserDefaults，由 `SMAppService` 系统级注册
+
+### 曲线历史
+- **内存滚动缓冲，不落盘**（3 分钟 × 1 样本/秒 ≈ 180 点，几 KB）
+- 重启后从零积累；无磁盘 I/O、无隐私残留
+
+| 边界 | 处理 |
+|---|---|
+| 睡眠/唤醒 | 按时间戳存点；唤醒后若空洞 > 当前窗口，**丢弃旧点重新积累**（不补假数据） |
+| 改窗口长度 | 立即按新窗口截断；变大时留空等新点填满 |
+| App 重启 | 清空，从零开始 |
+
+### 全项目数据位置（现状，供参考）
+
+| 数据 | 位置 | 生命周期 |
+|---|---|---|
+| 配置 | `~/Library/Preferences/org.witt.smartfan.app.plist` | 永久 |
+| 自定义模式 | `~/Library/Application Support/SmartFan/profiles/*.json` | 永久 |
+| 校准数据 | `~/Library/Application Support/SmartFan/calibration.json` | 永久 |
+| 临时 CSV 采样 | `~/Library/Application Support/SmartFan/logs/<session>/` | 默认完成后 24h 过期 |
+| 应用运行日志 | `~/Library/Logs/SmartFan/smart-fan-YYYY-MM-DD.log` | 7 天 / 5MiB 单文件 / 50MiB 目录 |
+| 后台服务运行日志 | `/var/root/Library/Logs/SmartFan/` | 同上，独立计算 |
+| 后台服务风扇状态 | 守护进程内存（`hold: HoldState`） | 不持久化 |
+
+---
+
+## 8. 首选项窗口布局（定稿）
 
 `NSWindow` + `NSHostingController`。**左侧竖排标签**，右侧内容区。标签顺序：**风扇 → 通用 → 菜单栏 → 关于**。
 
@@ -150,7 +182,7 @@ AppDelegate
 
 ---
 
-## 8. 任务清单
+## 9. 任务清单
 
 ### 阶段 P0 —— 规格冻结
 
@@ -207,8 +239,9 @@ AppDelegate
 
 - [ ] **MB-3.1 历史缓冲**
   - 文件：`Sources/SmartFanApp/AppState.swift`
-  - 要点：按 `sampleInterval` 采样 `(t, averageTemp, batteryTemp, fanRPM)`；容量 = `window / sampleInterval` 上限保护。
-  - DoD：切换频率/窗口后曲线点数正确且无内存增长。
+  - 要点：按 `sampleInterval` 采样 `(t, averageTemp, batteryTemp, fanRPM)`；容量 = `window / sampleInterval` 上限保护；**内存滚动缓冲，不落盘**（见 §7）。
+  - 边界：睡眠/唤醒后若空洞 > 窗口则丢弃旧点重新积累；改窗口长度立即截断；App 重启清空。
+  - DoD：切换频率/窗口后曲线点数正确且无内存增长；睡眠唤醒不出现假数据。
 - [ ] **MB-3.2 曲线渲染**
   - 文件：`Sources/SmartFanApp/MenuBarLabel.swift`（曲线画布）/ 新增 `Sparkline.swift`
   - 要点：单曲线按自身 min/max 归一化；双曲线各自归一化叠加（不同色）；空/单点数据安全。
@@ -234,7 +267,7 @@ AppDelegate
 
 ---
 
-## 9. 开放问题（默认值待确认）
+## 10. 已决问题汇总（Q1–Q7，均已定）
 
 | 编号 | 问题 | 结论 |
 |---|---|---|
@@ -246,7 +279,7 @@ AppDelegate
 | ~~Q6~~ | 默认值与默认样式 | **已定**：图标+数字 / 温度开 / 转速关 / 均温 / compact / 双曲线叠加 / 1s / 60s。 |
 | ~~Q7~~ | 曲线样式是否显示图标 | **已定**：不显示，只有曲线小窗。 |
 
-## 10. 不在本次范围
+## 11. 不在本次范围
 
 - 体感温度的真实算法（当前仅取电池温度）。
 - 菜单栏分段**拖动排序**（先做固定顺序 + 显隐）。
