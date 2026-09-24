@@ -4,7 +4,8 @@
 本文是任务清单，按 `MB-x.y` 逐个开发；每个任务列出目标、改动文件与验收标准（DoD）。
 
 - 状态：**计划中**
-- 目标版本：`1.1.0`（暂定，待功能完成后定）
+- 目标版本：**`1.0.0`**（与项目改名一起发布）
+- 文档产出：功能完成后**追加 `CHANGELOG.md`**（英文）条目，并新增 `docs/menu-bar-display-validation.md`（沿用现有验证文档格式）
 - 相关文档：[menu-bar-label-validation.md](menu-bar-label-validation.md)、[project-architecture.md](project-architecture.md)
 
 ---
@@ -487,3 +488,33 @@ AppDelegate
 | License | 许可证 |
 | Third-party notices | 第三方声明 |
 | The background service is running an older build than the app. Run "sudo smart-fan install" to re-sync it. | 后台服务运行的版本比 App 旧。运行 “sudo smart-fan install” 重新同步。 |
+
+---
+
+## 15. 测试与验收策略
+
+### 测试分层
+
+| 层 | 内容 | 依赖 |
+|---|---|---|
+| **纯逻辑** | `MenuBarDisplayConfig` 编解码/默认/坏数据回退；均温（含电池）、体感（电池）、转速（**仅成功读取的扇参与平均**）；曲线缓冲（采样/窗口截断/唤醒空洞丢弃）；数字文本格式化（三档单位、°F/°C、取整） | 无 |
+| **像素测试** | 沿用 `MenuBarLabelTests` 的 bitmap 渲染 + 像素检查；数字样式（两行/单数字/三档单位）、曲线（单/双/空数据占位）、异常态红色图标 | 无（不需 SMC） |
+| **隔离面板** | `PreferencesView` 各页在 `AppState(startServices: false)` 下渲染 | 无 |
+| **手动（不进自动化）** | 真机 SMC/风扇行为、菜单栏外观、右键切换 | 真机 |
+
+### `LocalizedPanelTests` 迁移
+
+现在渲染 `MenuBarView`（下拉菜单）。下拉下线后 → 迁移到 `PreferencesView`（四页各渲染一次）。
+
+### 每任务 DoD 验收步骤（统一模板）
+
+```bash
+swift build && swift test
+bash scripts/check-localization-package.sh
+bash scripts/setup.sh      # 安装后手动验：菜单栏各样式 / 右键切模式 / 首选项各页
+```
+
+结果记入 `docs/`。
+
+> 本机只有 CommandLineTools，`swift test` 需加
+> `-Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`（CI 的 macos-15 不需要）。
