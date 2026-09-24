@@ -75,9 +75,11 @@ enum MenuBarLabelImage {
 
     static func make(symbol: String, text: String?, needsWarning: Bool, colorScheme: ColorScheme) -> NSImage {
         let glyph = symbols.first { $0.0 == symbol }?.1
-        // Normal labels are templates for native contrast/selection. The warning
-        // composite keeps its orange badge and redraws when colorScheme changes.
+        // Normal labels are templates for native contrast/selection. A warning tints
+        // the whole icon red, so that drawing is non-template and redraws for the
+        // appearance (there is no badge dot).
         let color: NSColor = needsWarning && colorScheme == .dark ? .white : .black
+        let iconColor: NSColor = needsWarning ? .systemRed : color
         let title = text.map { NSAttributedString(string: $0, attributes: [.font: font, .foregroundColor: color]) }
         let glyphWidth = glyph?.size.width ?? iconWidth
         let contentWidth = glyphWidth + (title.map { gap + $0.size().width } ?? (needsWarning ? gap : 0))
@@ -91,15 +93,11 @@ enum MenuBarLabelImage {
                                   y: (size.height - glyph.size.height) / 2,
                                   width: glyph.size.width, height: glyph.size.height)
                 glyph.draw(in: rect)
-                color.setFill()
+                iconColor.setFill()
                 rect.fill(using: .sourceAtop)
             }
             if let title {
                 title.draw(at: NSPoint(x: contentX + glyphWidth + gap, y: (size.height - title.size().height) / 2))
-            }
-            if needsWarning {
-                NSColor.systemOrange.setFill()
-                NSBezierPath(ovalIn: NSRect(x: contentX + glyphWidth - 2, y: size.height - 5, width: 5, height: 5)).fill()
             }
             return true
         }
@@ -146,6 +144,7 @@ enum MenuBarLabelImage {
         let lineFont = twoLineFont()
         let glyph = symbols.first { $0.0 == symbol }?.1
         let color: NSColor = needsWarning && colorScheme == .dark ? .white : .black
+        let iconColor: NSColor = needsWarning ? .systemRed : color
         let topLine = NSAttributedString(string: top, attributes: [.font: lineFont, .foregroundColor: color])
         let bottomLine = NSAttributedString(string: bottom, attributes: [.font: lineFont, .foregroundColor: color])
         let textWidth = ceil(max(topLine.size().width, bottomLine.size().width))
@@ -169,18 +168,13 @@ enum MenuBarLabelImage {
                 let rect = NSRect(x: contentX, y: (size.height - glyph.size.height) / 2,
                                   width: glyph.size.width, height: glyph.size.height)
                 glyph.draw(in: rect)
-                color.setFill()
+                iconColor.setFill()
                 rect.fill(using: .sourceAtop)
             }
             let textX = contentX + glyphWidth + gap
             let topY = (size.height + linesHeight) / 2 - topLine.size().height
             topLine.draw(at: NSPoint(x: textX, y: topY))
             bottomLine.draw(at: NSPoint(x: textX, y: topY - bottomLine.size().height))
-            if needsWarning {
-                NSColor.systemOrange.setFill()
-                NSBezierPath(ovalIn: NSRect(x: contentX + glyphWidth - 2, y: size.height - 5,
-                                            width: 5, height: 5)).fill()
-            }
             return true
         }
         image.isTemplate = !needsWarning

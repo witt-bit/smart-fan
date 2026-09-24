@@ -77,28 +77,27 @@ struct MenuBarLabelTests {
         }
     }
 
-    @Test("Warning remains orange in both appearances and text changes contrast")
+    @Test("A warning tints the icon red in both appearances and keeps text contrast")
     func warningColors() throws {
         for scheme in [ColorScheme.light, .dark] {
             let pixels = try bitmap(MenuBarLabelImage.make(
                 symbol: "fan.fill", text: "100°", needsWarning: true, colorScheme: scheme
             ), scale: 2)
-            var orange = 0
+            var red = 0
             var foreground = 0
             for y in 0..<pixels.pixelsHigh {
                 for x in 0..<pixels.pixelsWide {
                     guard let c = pixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
                           c.alphaComponent > 0.8 else { continue }
-                    if c.redComponent > 0.8 && c.greenComponent > 0.2 && c.greenComponent < 0.8 && c.blueComponent < 0.2 {
-                        orange += 1
-                    }
+                    // systemRed is roughly (1.0, 0.23, 0.19).
+                    if c.redComponent > 0.8 && c.greenComponent < 0.4 && c.blueComponent < 0.4 { red += 1 }
                     if x > pixels.pixelsWide / 2 {
                         if scheme == .light && c.redComponent < 0.1 { foreground += 1 }
-                        if scheme == .dark && c.redComponent > 0.9 { foreground += 1 }
+                        if scheme == .dark && c.redComponent > 0.9 && c.greenComponent > 0.9 && c.blueComponent > 0.9 { foreground += 1 }
                     }
                 }
             }
-            #expect(orange > 10)
+            #expect(red > 10)
             #expect(foreground > 10)
         }
     }
