@@ -661,14 +661,14 @@ struct Install: ParsableCommand {
             return info?["CFBundleShortVersionString"] as? String == SmartFanVersion.current
                 && info?["CFBundleIdentifier"] as? String == "org.witt.smartfan.app"
         }) else {
-            throw ValidationError("No matching SmartFan.app was found. Install with Homebrew or run ./setup.sh before installing the daemon.")
+            throw ValidationError("No matching SmartFan.app was found. Install with Homebrew or run ./scripts/setup.sh before installing the daemon.")
         }
 
         // Non-destructively capture whether the controlling user's app is running
         // NOW — before this install kills anything — as the signal for whether to
         // relaunch it at the end (upgrade recovery). Captured here, not inferred from
         // a later pkill, so it can't be confused by whatever killed the app first
-        // (./setup.sh quits it before calling install; brew leaves it running).
+        // (./scripts/setup.sh quits it before calling install; brew leaves it running).
         func runTool(_ path: String, _ args: [String]) -> Int32 {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: path)
@@ -1010,7 +1010,7 @@ struct Install: ParsableCommand {
                 let tag = bundleVersion(path) ?? (fm.fileExists(atPath: path) ? "unreadable" : "absent")
                 print("  \(path)  [\(tag)]")
             }
-            print("The CLI and daemon are installed. A from-source build assembles the app next (build-app); otherwise reinstall via ./setup.sh or Homebrew.")
+            print("The CLI and daemon are installed. A from-source build assembles the app next (build-app); otherwise reinstall via ./scripts/setup.sh or Homebrew.")
         }
 
         // Upgrade recovery: if the controlling user's app was running when this
@@ -1136,7 +1136,7 @@ struct Uninstall: ParsableCommand {
 
 /// Assembles SmartFan.app from a built app binary + icon, writing the
 /// Info.plist from SmartFanVersion.current. This is the SINGLE place the
-/// bundle is assembled — both install paths (Homebrew formula and setup.sh)
+/// bundle is assembled — both install paths (Homebrew formula and scripts/setup.sh)
 /// call it, so no field (version included) can drift between them.
 struct BuildApp: ParsableCommand {
     static let configuration = CommandConfiguration(

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Produce the same signed app + CLI layout used by Homebrew and source installs.
 set -euo pipefail
 cd "$(dirname "$0")/.."

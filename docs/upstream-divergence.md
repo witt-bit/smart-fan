@@ -36,6 +36,6 @@ key, including `TCDX`/`TCMb`/`Tp06`.
 3. If upstream changes how the CPU row or headline is computed, compare with
    `ThermalStatus+Display.swift` and keep whichever matches the Stats key map;
    `DisplayedTemperatureTests` encodes the measured M4 Max case.
-4. Run `Scripts/test.sh` and `Scripts/test.sh -c release`, then compare the CPU
+4. Run `scripts/test.sh` and `scripts/test.sh -c release`, then compare the CPU
    and GPU rows with Stats under CPU and GPU load
-   (`Scripts/thermal-calibration/`).
+   (`scripts/thermal-calibration/`).

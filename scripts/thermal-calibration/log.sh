@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 # Log HID sensors and `smart-fan status` side by side, one JSON line per sample.
 # Usage: log.sh <samples> <gap-seconds> <tag>   (build hid-sample.swift first)
 n=${1:-120}; gap=${2:-5}; tag=${3:-run}

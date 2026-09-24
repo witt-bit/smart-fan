@@ -74,9 +74,9 @@ The upstream Homebrew formula does not include this fork's changes. To build/ins
 ```sh
 git clone https://github.com/witt/smart-fan.git
 cd smart-fan
-./setup.sh
+./scripts/setup.sh
 ```
 
-Before installing, pause heavy workloads, let the machine cool, and back up the installed application, CLI, daemon configuration and preferences. `setup.sh` replaces the application and daemon, resets fan control, and requires administrator authorization. It can replace a locally customized launchd configuration. It is not necessary to reinstall on the machine already running this tested build merely because the source has been pushed.
+Before installing, pause heavy workloads, let the machine cool, and back up the installed application, CLI, daemon configuration and preferences. `scripts/setup.sh` replaces the application and daemon, resets fan control, and requires administrator authorization. It can replace a locally customized launchd configuration. It is not necessary to reinstall on the machine already running this tested build merely because the source has been pushed.
 
 After installation, verify the application, CLI and running daemon versions agree, and repeat a cool cold-handoff check before long workloads. If a Homebrew-managed CLI is also present, inspect which binary `command -v thermalforge` selects; the installer does not automatically reconcile every existing Homebrew link. An upstream app update or Homebrew reinstall may overwrite this repair. Keep the prior working installation for rollback; no machine-specific backup or administrator credentials are stored in this repository.

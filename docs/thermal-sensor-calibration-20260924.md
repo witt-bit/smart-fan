@@ -33,7 +33,7 @@ This document went through two earlier conclusions that were wrong:
   duplicates, so it is not an identity. 26 unique sensors remain.
 - Each load run records its own pre-load baseline and compares the settled tail
   against it, so incomplete cooldown between runs does not skew deltas.
-- Scripts: `Scripts/thermal-calibration/` (`hid-sample.swift`, `gpu-load.swift`,
+- scripts: `scripts/thermal-calibration/` (`hid-sample.swift`, `gpu-load.swift`,
   `log.sh`).
 
 ## Idle baseline (fans off under Apple control, 15 samples)

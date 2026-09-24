@@ -83,12 +83,12 @@ open /Applications/SmartFan.app
 ```bash
 git clone https://github.com/witt/smart-fan.git
 cd smart-fan
-./setup.sh
+./scripts/setup.sh
 ```
 
-`setup.sh` 会编译源码、组装应用、请求管理员权限完成安装，并打开 SmartFan，无需再执行其他安装命令。
+`scripts/setup.sh` 会编译源码、组装应用、请求管理员权限完成安装，并打开 SmartFan，无需再执行其他安装命令。
 
-此方式默认构建仓库的 `main` 分支，可能包含尚未发行的修改。如需构建指定发行版，可在运行 `./setup.sh` 前执行 `git checkout v0.2.3.19`，版本号按需替换。
+此方式默认构建仓库的 `main` 分支，可能包含尚未发行的修改。如需构建指定发行版，可在运行 `./scripts/setup.sh` 前执行 `git checkout v0.2.3.19`，版本号按需替换。
 
 ### 安装完成后
 
@@ -163,10 +163,10 @@ open /Applications/SmartFan.app
 
 ```bash
 git pull --ff-only
-./setup.sh
+./scripts/setup.sh
 ```
 
-若之前检出了指定版本标签，请先 `git fetch origin --tags`，再检出需要的新标签并运行 `./setup.sh`。
+若之前检出了指定版本标签，请先 `git fetch origin --tags`，再检出需要的新标签并运行 `./scripts/setup.sh`。
 
 ## 卸载
 
@@ -242,9 +242,9 @@ SmartFan 的 CPU、GPU 行显示对应传感器中的**最高值**，可与 Stat
 | [`Sources/SmartFanApp/`](Sources/SmartFanApp/) | SwiftUI 菜单栏应用、界面状态和交互 |
 | [`Sources/SmartFanCore/`](Sources/SmartFanCore/) | SMC 访问、风扇控制、后台通信、模式与日志 |
 | [`Sources/SmartFanLocalization/`](Sources/SmartFanLocalization/) | 语言选择和翻译资源 |
-| [`Sources/smart-fan/`](Sources/smart-fan/) | CLI、应用组装、安装与卸载入口 |
+| [`Sources/SmartFanCLI/`](Sources/SmartFanCLI/) | CLI、应用组装、安装与卸载入口 |
 | [`Tests/SmartFanTests/`](Tests/SmartFanTests/) | 自动化测试 |
-| [`Scripts/`](Scripts/) | 测试、语言资源校验与发行打包脚本 |
+| [`scripts/`](scripts/) | 测试、语言资源校验与发行打包脚本 |
 
 ### 构建与验证
 
@@ -252,20 +252,20 @@ SmartFan 的 CPU、GPU 行显示对应传感器中的**最高值**，可与 Stat
 
 ```bash
 swift build
-bash Scripts/test.sh
-bash Scripts/test.sh -c release
-bash Scripts/check-localization-package.sh
+bash scripts/test.sh
+bash scripts/test.sh -c release
+bash scripts/check-localization-package.sh
 ```
 
-这些命令构建和测试项目，不执行安装流程。`Scripts/test.sh` 按顺序运行 Swift 测试及客户端断连检查；CI 也覆盖 Debug、Release 和语言资源打包验证。
+这些命令构建和测试项目，不执行安装流程。`scripts/test.sh` 按顺序运行 Swift 测试及客户端断连检查；CI 也覆盖 Debug、Release 和语言资源打包验证。
 
 本地生成发行包：
 
 ```bash
-bash Scripts/package-release.sh
+bash scripts/package-release.sh
 ```
 
-产物输出到 `dist/`，包括完整应用与 CLI 的 `.tar.gz` 和 `SHA256SUMS`。打包不会替换本机已安装的应用；需要安装开发版本时再运行 `./setup.sh`。
+产物输出到 `dist/`，包括完整应用与 CLI 的 `.tar.gz` 和 `SHA256SUMS`。打包不会替换本机已安装的应用；需要安装开发版本时再运行 `./scripts/setup.sh`。
 
 提交 [Pull Request](https://github.com/witt/smart-fan/pulls) 时，请说明具体问题、改动范围和验证结果。涉及温控、后台通信或原生菜单行为的修改，应补充对应的本机验证，并区分自动化测试、隔离显示测试和真实硬件结果。
 

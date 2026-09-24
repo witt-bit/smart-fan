@@ -1,38 +1,10 @@
 # SmartFan changelog
 
+## 1.0.0
+
+- Rename the project to SmartFan. The repository and package are `smart-fan`, the CLI command is `smart-fan`, the app bundle is `SmartFan.app`, the modules are `SmartFanCore` / `SmartFanApp` / `SmartFanLocalization`, and the bundle identity is `org.witt.smartfan.*`. Paths follow: socket `/var/run/smart-fan.sock`, install path `/usr/local/bin/smart-fan`, user data and logs under `~/Library/.../SmartFan/`.
+- Remove the ThermalForge / MacFanPro migration path. This is an independent package with its own identity; there is nothing to migrate.
+- Consolidate the shell scripts under `scripts/`, including `scripts/setup.sh` and `scripts/uninstall.sh`, and unify their shebang to `#!/usr/bin/env bash`.
+- Reissue the LICENSE as MIT, keeping the upstream ThermalForge and MacFanPro copyright notices alongside the SmartFan copyright. Git history and all upstream attribution (NOTICE.md, ThirdPartyNotices/) are retained.
+
 ## 0.2.3.19
-
-- Size the language pop-up to its choices instead of stretching it across the row. It takes the native pop-up width (its longest choice), stays the same width when the selection changes, and lines up with the version value below.
-
-## 0.2.3.18
-
-- Group the language picker and a new Version row in their own section, between two dividers, directly above Quit. The version shown is the one the app was built as. The °F/°C and Launch at Login toggles stay where upstream has them.
-
-## 0.2.3.17
-
-- Write runtime log lines without rescanning the log directory. Each line previously listed the directory twice and cost 0.7–1.1 ms in the background, growing with the number of log files; it now costs about 57 µs regardless of file count. The background service writes up to ~22 lines per second while fans ramp. Size and retention limits are unchanged.
-- `sudo smart-fan uninstall --purge-data` also removes the background service's logs in `/var/root/Library/Logs/SmartFan/`, which were previously left behind. Plain `uninstall` still keeps logs.
-- README: how to read the background service log, when runtime logs are pruned, and why unmarked captures from earlier versions are kept.
-
-## 0.2.3.16
-
-- Show the hottest CPU core in the CPU row. On M4 the row also picked up SoC hotspot keys (`TCDX`, `TCMb`) and per-core keys that are not the core temperature (`Tp02`, `Tp06`, `Tp0A`), so under GPU load it read 73–75°C while every CPU core read 60–63°C. It now uses the per-core keys Stats maps for the M4 generation; under GPU load SmartFan and Stats now agree within 0.5°C. Other chips keep the previous grouping.
-- The menu bar reading is now the hotter of the CPU and GPU rows, so it always matches the panel.
-- Stop reporting the battery gas-gauge sensors as GPU temperatures. On M4 Max the SMC keys `TG0B`, `TG0H` and `TG0V` are battery sensors; SmartFan asks the system's thermal sensor services which keys are batteries and leaves them out.
-- Drop placeholder readings (below 10°C) from CPU/GPU die keys in `smart-fan status` and recorded logs.
-- Fan control and the 95°C safety floor are unchanged: they still follow the hottest point on the chip, including the hotspot keys.
-
-## 0.2.3.15
-
-- Simplify installation by removing the retired product's migration flag and product-selection layer.
-- Remove the old Homebrew package-name mapping; maintain SmartFan's current version ordering.
-- Present SmartFan installation, usage and updates consistently across documentation and release notes.
-- Keep upstream attribution and copyright notices.
-
-## 0.2.3.14
-
-- Provide the SmartFan menu bar app, `smart-fan` CLI and background service for Apple Silicon Macs.
-- Publish releases through `witt/smart-fan` and Homebrew packages through `witt/smart-fan`.
-- Include English, Simplified Chinese and Traditional Chinese interfaces, with immediate language switching.
-- Keep the native menu, automatic panel height, centered minimum-width temperature label and localized Quit footer.
-- Document installation, updates and removal, with a screenshot of the installed app in the README.

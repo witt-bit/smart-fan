@@ -376,7 +376,7 @@ private struct UpdateAvailableBanner: View {
                 .padding(.vertical, 3)
                 .background(RoundedRectangle(cornerRadius: 4).fill(Color.secondary.opacity(0.15)))
 
-            Text(language.text("Built from source? Run  git pull && ./setup.sh"))
+            Text(language.text("Built from source? Run  git pull && ./scripts/setup.sh"))
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)

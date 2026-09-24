@@ -3,7 +3,7 @@
 ## 修改范围
 
 - 菜单：语言选择移出上游页脚，与新增的“版本”一行组成独立区块，上下各一条分隔线，位于“退出”正上方；版本号来自 `SmartFanVersion.current`。“°F / °C”与“登录时启动”保持上游位置。
-- 文案：英文与简体中文新增 “Version / 版本”；繁体由 `Scripts/update-traditional.swift` 生成，同时把 3 条既有 SmartFan 文案恢复为排序后的位置（译文不变）。
+- 文案：英文与简体中文新增 “Version / 版本”；繁体由 `scripts/update-traditional.swift` 生成，同时把 3 条既有 SmartFan 文案恢复为排序后的位置（译文不变）。
 - 温控算法、传感器读取、日志与风扇控制未改变。
 
 ## 本机候选版

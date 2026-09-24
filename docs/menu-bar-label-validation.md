@@ -71,7 +71,7 @@ Reproduction commands:
 ```sh
 swift test
 swift test -c release
-bash Scripts/check-localization-package.sh "$(swift build -c release --show-bin-path)"
+bash scripts/check-localization-package.sh "$(swift build -c release --show-bin-path)"
 ```
 
 The machine is an M4 Max (Mac16,5), macOS 27.0 (26A428). Physical 1x displays,

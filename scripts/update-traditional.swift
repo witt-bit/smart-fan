@@ -1,4 +1,4 @@
-// Run from the repository root: swift Scripts/update-traditional.swift
+// Run from the repository root: swift scripts/update-traditional.swift
 // Traditional Chinese uses the Simplified Chinese wording, converted by script only.
 import Foundation
 let base = URL(fileURLWithPath: "Sources/SmartFanLocalization/Resources")

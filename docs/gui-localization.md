@@ -6,14 +6,14 @@ The fork supports English (`en`), Simplified Chinese (`zh-Hans`) and Traditional
 
 1. Keep the official English copy as the `language.text(...)` key. Add the same key/value to `Sources/SmartFanLocalization/Resources/en.json`.
 2. Translate `zh-Hans.json`. Keep named placeholders such as `{version}` and `{rpm}` unchanged. Dynamic values are substituted once and remain literal.
-3. Run `swift Scripts/update-traditional.swift` from the repository root. Traditional Chinese is exactly the same wording converted with Foundation's `Simplified-Traditional` transform; do not add regional vocabulary or rewrite meanings.
-4. Run `bash Scripts/test.sh` and `bash Scripts/check-localization-package.sh`. The tests check key/token completeness, exact script conversion, language preference ordering, English fallback, isolated preference persistence and retained panel rendering in every language and warning state.
+3. Run `swift scripts/update-traditional.swift` from the repository root. Traditional Chinese is exactly the same wording converted with Foundation's `Simplified-Traditional` transform; do not add regional vocabulary or rewrite meanings.
+4. Run `bash scripts/test.sh` and `bash scripts/check-localization-package.sh`. The tests check key/token completeness, exact script conversion, language preference ordering, English fallback, isolated preference persistence and retained panel rendering in every language and warning state.
 
 Profile IDs, commands, daemon protocol fields, JSON, CLI help, log text and numeric formats remain upstream contracts. Translate only their GUI presentation. The localization module has no dependency on SmartFanCore. The `AppState(startServices: false)` hook exists only for offscreen presentation tests; production initialization and actions use the upstream path.
 
 ## Packaging and upstream synchronization
 
-`swift build` creates `SmartFan_SmartFanLocalization.bundle` beside the app executable. The shared `smart-fan build-app` assembler, including the path used by `setup.sh`, validates and copies it into `Contents/Resources`. Binary distributions must include that adjacent bundle, pass `--localization-resources`, or ship the already assembled app. Missing/invalid resources fail before replacing an existing destination. CI checks both correct copying and that failure path.
+`swift build` creates `SmartFan_SmartFanLocalization.bundle` beside the app executable. The shared `smart-fan build-app` assembler, including the path used by `scripts/setup.sh`, validates and copies it into `Contents/Resources`. Binary distributions must include that adjacent bundle, pass `--localization-resources`, or ship the already assembled app. Missing/invalid resources fail before replacing an existing destination. CI checks both correct copying and that failure path.
 
 At runtime a packaged app loads its own resource bundle, never a SwiftPM build-machine fallback. If installed resources cannot be read, English source text remains available. The app declares English as its development region and all three supported localizations. Sign the completed app after assembly, so resource signatures cover the translations.
 

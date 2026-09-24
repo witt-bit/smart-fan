@@ -9,10 +9,13 @@
 //
 
 public enum SmartFanVersion {
-    /// Change the base only after integrating the corresponding upstream release.
+    /// Upstream ThermalForge base this fork last integrated. Change it only after
+    /// integrating the corresponding upstream release. Independent of the
+    /// SmartFan release number below.
     public static let upstream = "0.2.3"
-    public static let revision = 19
-    public static let current = "\(upstream).\(revision)"
+
+    /// SmartFan's own release version, independent of the upstream base above.
+    public static let current = "1.0.0"
 
     /// Strict dotted-numeric release ordering, with no version-specific exceptions.
     public static func isNewerRelease(_ candidate: String, than installed: String) -> Bool {

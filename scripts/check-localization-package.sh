@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Validate packaging without opening the app or touching installed files.
 set -euo pipefail
 cd "$(dirname "$0")/.."

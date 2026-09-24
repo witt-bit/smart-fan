@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Keep SIGPIPE regression outside the test runner's inherited signal handling.
 set -euo pipefail
 cd "$(dirname "$0")/.."
