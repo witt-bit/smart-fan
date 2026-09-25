@@ -84,6 +84,38 @@ struct MenuBarContentTests {
         }
     }
 
+    @Test("Missing metrics degrade to nothing rather than zero")
+    func missingMetricsDegrade() {
+        // A machine that reports no sensors and no fan readings at all.
+        let empty = status(average: nil, battery: nil, rpm: nil)
+        var config = MenuBarDisplayConfig.default
+        config.showTemperature = true
+        config.showRPM = true
+        let readings = MenuBarContent.readings(config, status: empty, fahrenheit: false)
+        #expect(readings.temperature == nil)
+        #expect(readings.rpm == nil)
+        // …and the item still renders (icon only).
+        let image = MenuBarContent.image(config: config, history: MenuBarHistory(), monitorState: .idle,
+                                         status: empty, fahrenheit: false, needsWarning: false,
+                                         colorScheme: .light, statusBarThickness: 22)
+        #expect(image.size.width > 0)
+
+        // A nil status degrades the same way.
+        let none = MenuBarContent.readings(config, status: nil, fahrenheit: false)
+        #expect(none.temperature == nil && none.rpm == nil)
+    }
+
+    @Test("A machine with no battery sensor reports no feels-like temperature")
+    func noBatterySensors() {
+        let noBattery = status(average: 48, battery: nil, rpm: 2000)
+        var config = MenuBarDisplayConfig.default
+        config.temperatureMetric = .feelsLike
+        #expect(MenuBarContent.readings(config, status: noBattery, fahrenheit: false).temperature == nil)
+        // The average metric still works on the same machine.
+        config.temperatureMetric = .average
+        #expect(MenuBarContent.readings(config, status: noBattery, fahrenheit: false).temperature == "48°")
+    }
+
     // MARK: - Curves
 
     private func history(_ temps: [Float?], _ rpms: [Float?]) -> MenuBarHistory {

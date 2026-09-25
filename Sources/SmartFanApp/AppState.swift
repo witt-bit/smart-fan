@@ -519,10 +519,13 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// Clamp to the first fan's reported range; pass through when no status is known
-    /// yet (the daemon clamps as a backstop).
+    /// Clamp to the first fan's reported range. Passes the value through unchanged
+    /// when the hardware reports no range (maxRPM == 0 on some machines) or no status
+    /// is known yet — the daemon clamps as a backstop either way.
     private func clampedFixedRPM(_ rpm: Int) -> Int {
-        guard let fan = latestStatus?.fans.first, fan.maxRPM >= fan.minRPM else { return max(0, rpm) }
+        guard let fan = latestStatus?.fans.first, fan.maxRPM > 0, fan.maxRPM >= fan.minRPM else {
+            return max(0, rpm)
+        }
         return min(max(rpm, fan.minRPM), fan.maxRPM)
     }
 
