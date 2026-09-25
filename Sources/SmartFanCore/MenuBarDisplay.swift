@@ -20,6 +20,9 @@ public enum MenuBarStyle: String, Codable, CaseIterable, Sendable {
     case rpmCurve
     /// Both curves overlaid in one small canvas.
     case dualCurve
+
+    /// True when the style draws a sparkline (and therefore needs sample history).
+    public var usesCurve: Bool { self != .numbers }
 }
 
 /// Which temperature the numbers and the temperature curve use.

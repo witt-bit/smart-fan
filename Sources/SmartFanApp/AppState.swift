@@ -27,8 +27,15 @@ final class AppState: ObservableObject {
         didSet {
             guard displayConfig != oldValue else { return }
             displayConfig.normalized().save()
+            // A window shrink takes effect at once; a grow fills in as samples arrive.
+            if displayConfig.window != oldValue.window {
+                menuBarHistory.trim(window: displayConfig.window)
+            }
         }
     }
+    /// Rolling samples for the curve styles. In-memory only (plan §7); recorded only
+    /// while a curve style is selected.
+    @Published var menuBarHistory = MenuBarHistory()
     /// Target RPM for Fixed Rate mode. Persisted; clamped to the hardware range when
     /// applied. The daemon clamps too, but the slider and the reading show our value.
     @Published var fixedRPM: Int = UserDefaults.standard.object(forKey: "fixedRPM") as? Int ?? 3000 {
@@ -385,11 +392,13 @@ final class AppState: ObservableObject {
         let monitor = ThermalMonitor(fanControl: fc, profile: activeProfile)
         monitor.onUpdate = { [weak self] status, profile, state in
             Task { @MainActor [weak self] in
-                self?.latestStatus = status
-                self?.activeProfile = profile
-                self?.monitorState = state
+                guard let self else { return }
+                self.latestStatus = status
+                self.activeProfile = profile
+                self.monitorState = state
                 // Max of only the displayed sensors (CPU and GPU rows)
-                self?.maxTemp = status.displayedPeakTemp
+                self.maxTemp = status.displayedPeakTemp
+                self.recordMenuBarSample(status)
             }
         }
         monitor.onFanCommand = { [weak self] command in
@@ -411,6 +420,20 @@ final class AppState: ObservableObject {
     }
 
     // MARK: - Actions
+
+    /// Record one curve sample. Skipped entirely for the numbers style, so the buffer
+    /// costs nothing when no curve is shown.
+    private func recordMenuBarSample(_ status: ThermalStatus) {
+        let config = displayConfig
+        guard config.style.usesCurve else { return }
+        menuBarHistory.append(
+            MenuBarHistory.Sample(
+                time: Date(),
+                temperature: MenuBarContent.metricValue(status, config.temperatureMetric),
+                rpm: status.fanRPM),
+            interval: config.sampleInterval,
+            window: config.window)
+    }
 
     /// Explicit user takeover of any reflected CLI hold. Returns whether one was
     /// active, so the caller can clear the daemon's unsupervised hold (send a
