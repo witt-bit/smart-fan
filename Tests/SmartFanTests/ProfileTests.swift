@@ -22,6 +22,11 @@ struct ProfileTests {
         #expect(FanProfile.selectable(id: "max").id == "max")
         // Smart resolves even though it isn't in `builtIn`.
         #expect(FanProfile.selectable(id: "smart").id == "smart")
+        // Fixed Rate is surfaced like Smart, also outside `builtIn` so the CLI's
+        // curve-driven `watch` (which iterates `builtIn`) is unaffected.
+        #expect(FanProfile.selectable(id: "fixed").id == "fixed")
+        #expect(!FanProfile.builtIn.contains { $0.id == "fixed" })
+        #expect(FanProfile.uiProfiles.map(\.id) == ["silent", "balanced", "performance", "max", "smart", "fixed"])
         // Unknown id (a profile removed in a future version) and nil both fall to Silent.
         #expect(FanProfile.selectable(id: "does-not-exist").id == "silent")
         #expect(FanProfile.selectable(id: nil).id == "silent")

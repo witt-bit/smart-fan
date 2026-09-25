@@ -93,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func profileMenu() -> NSMenu {
         let menu = NSMenu()
         let active = appState.activeProfile.id
-        for profile in [FanProfile.smart] + FanProfile.builtIn {
+        for profile in FanProfile.uiProfiles {
             let item = NSMenuItem(title: language.text(profile.name),
                                   action: #selector(selectProfileAction(_:)), keyEquivalent: "")
             item.target = self
@@ -108,6 +108,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let id = sender.representedObject as? String else { return }
         if id == FanProfile.smart.id {
             appState.setSmart()
+        } else if id == FanProfile.fixed.id {
+            appState.setFixedRPM(appState.fixedRPM)
         } else if let profile = FanProfile.builtIn.first(where: { $0.id == id }) {
             appState.selectProfile(profile)
         }

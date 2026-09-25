@@ -225,13 +225,30 @@ extension FanProfile {
 
     public static let builtIn: [FanProfile] = [silent, balanced, performance, max]
 
+    /// Fixed Rate: holds the fans at a user-chosen RPM instead of following a
+    /// temperature curve. Hands-off, so `ThermalMonitor` never fights the hold —
+    /// AppState applies the RPM itself (see `AppState.selectProfile`).
+    ///
+    /// Deliberately **not** in `builtIn`: like Smart it is surfaced by its own entry,
+    /// and the CLI `watch` (which iterates `builtIn`) has no RPM to drive it with.
+    public static let fixed = FanProfile(
+        id: "fixed",
+        name: "Fixed Rate",
+        curve: Curve(stopTemp: 50, startTemp: 55, ceilingTemp: 55,
+                     maxRPMPercent: 0, handsOff: true)
+    )
+
     /// Resolve a persisted profile id to a known profile for launch restore. Searches the
     /// built-ins plus Smart (which is surfaced via its own button, so it isn't in
     /// `builtIn`). Returns Silent when the id is nil (nothing saved) or unrecognized (a
     /// profile removed or renamed in a later version), so a stale saved id never crashes.
+    /// Every profile the app's picker and context menu offer, in display order.
+    /// = the search order of `selectable(id:)`, so the two cannot drift.
+    public static let uiProfiles: [FanProfile] = builtIn + [smart, fixed]
+
     public static func selectable(id: String?) -> FanProfile {
         guard let id else { return .silent }
-        return (builtIn + [smart]).first { $0.id == id } ?? .silent
+        return uiProfiles.first { $0.id == id } ?? .silent
     }
 }
 

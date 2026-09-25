@@ -76,5 +76,7 @@
   "Compact": "Compact",
   "Full": "Full",
   "Sample Interval": "Sample Interval",
-  "Time Window": "Time Window"
+  "Time Window": "Time Window",
+  "Fixed Rate": "Fixed Rate",
+  "Fan speed": "Fan speed"
 }

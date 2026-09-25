@@ -29,6 +29,11 @@ final class AppState: ObservableObject {
             displayConfig.normalized().save()
         }
     }
+    /// Target RPM for Fixed Rate mode. Persisted; clamped to the hardware range when
+    /// applied. The daemon clamps too, but the slider and the reading show our value.
+    @Published var fixedRPM: Int = UserDefaults.standard.object(forKey: "fixedRPM") as? Int ?? 3000 {
+        didSet { UserDefaults.standard.set(fixedRPM, forKey: "fixedRPM") }
+    }
     /// Reflects the current SMAppService login-item status so the menu toggle shows the
     /// right state. Initialized from that status as the property's DEFAULT (not reassigned
     /// in init), so `didSet` does NOT fire on launch — reading the state must never
@@ -179,9 +184,9 @@ final class AppState: ObservableObject {
                 // running comes back to Smart. Deferred to here so the hold state is known
                 // before any fan command is issued (no pre-adopt commands in the window).
                 if adopted == nil {
-                    let restored = self.restoredProfile()
-                    self.activeProfile = restored
-                    self.monitor?.switchProfile(restored)
+                    // Applies the saved choice through the same path the UI uses, so a
+                    // restored Fixed Rate re-holds its RPM and hands-off modes reset.
+                    self.selectProfile(self.restoredProfile())
                 }
                 // Ordering gate: only now that adopt has applied the launch state
                 // do we start the heartbeat. This makes adopt's externalHold write
@@ -466,13 +471,36 @@ final class AppState: ObservableObject {
         monitor?.switchProfile(profile)
         TFLogger.shared.profile("Selected: \(profile.name)")
 
-        // Reset to auto when switching to a hands-off profile, OR when taking over
-        // a CLI hold (so its unsupervised hold isn't orphaned). Otherwise active
-        // profiles let tick() ramp from the current temperature. Off-main one-shot
-        // on the pump (never coalesced/reordered).
-        if profile.curve.handsOff || profile.id == "smart" || profile.id == "silent" || took {
+        // Fixed Rate re-applies its RPM (the monitor is hands-off and will not do it).
+        // Other hands-off profiles reset to auto, so a hold is not orphaned. An active
+        // temperature profile lets tick() ramp from the current temperature. Off-main
+        // one-shot on the pump (never coalesced/reordered).
+        if profile.id == FanProfile.fixed.id {
+            commandPump.submit(.setRPM(Float(clampedFixedRPM(fixedRPM))))
+        } else if profile.curve.handsOff || profile.id == "smart" || profile.id == "silent" || took {
             commandPump.submit(.resetAuto)
         }
+    }
+
+    /// Fixed Rate: hold the fans at `rpm`. Clamps to the fan's range when known.
+    func setFixedRPM(_ rpm: Int) {
+        guard servicesEnabled else { return }
+        let clamped = clampedFixedRPM(rpm)
+        if fixedRPM != clamped { fixedRPM = clamped }
+        // During a slider drag, only re-issue the command; switching profile each tick
+        // would reset the monitor on every step.
+        if activeProfile.id == FanProfile.fixed.id {
+            commandPump.submit(.setRPM(Float(clamped)))
+        } else {
+            selectProfile(.fixed)
+        }
+    }
+
+    /// Clamp to the first fan's reported range; pass through when no status is known
+    /// yet (the daemon clamps as a backstop).
+    private func clampedFixedRPM(_ rpm: Int) -> Int {
+        guard let fan = latestStatus?.fans.first, fan.maxRPM >= fan.minRPM else { return max(0, rpm) }
+        return min(max(rpm, fan.minRPM), fan.maxRPM)
     }
 
     // MARK: - Profile persistence

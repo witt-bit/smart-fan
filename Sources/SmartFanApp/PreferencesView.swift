@@ -96,20 +96,26 @@ private struct FansPreferences: View {
             Picker(language.text("Profile"), selection: Binding(
                 get: { appState.activeProfile.id },
                 set: { id in
-                    // Smart has its own entry point (it also sets up the Smart monitor
-                    // state and logging); routing it through selectProfile would skip that.
+                    // Smart and Fixed Rate have their own entry points (Smart sets up its
+                    // monitor state; Fixed re-applies its RPM), so route them explicitly.
                     if id == FanProfile.smart.id {
                         appState.setSmart()
-                    } else if let profile = selectableProfiles.first(where: { $0.id == id }) {
+                    } else if id == FanProfile.fixed.id {
+                        appState.setFixedRPM(appState.fixedRPM)
+                    } else if let profile = FanProfile.uiProfiles.first(where: { $0.id == id }) {
                         appState.selectProfile(profile)
                     }
                 }
             )) {
-                ForEach(selectableProfiles) { profile in
+                ForEach(FanProfile.uiProfiles) { profile in
                     Text(language.text(profile.name)).tag(profile.id)
                 }
             }
             .labelsHidden()
+
+            if appState.activeProfile.id == FanProfile.fixed.id {
+                rpmSlider
+            }
 
             HStack(spacing: 8) {
                 Toggle(isOn: Binding(
@@ -144,8 +150,30 @@ private struct FansPreferences: View {
         }
     }
 
-    private var selectableProfiles: [FanProfile] {
-        [FanProfile.smart] + FanProfile.builtIn
+    /// Fixed Rate control: a slider across the fan's own range, in 100 RPM steps.
+    /// Uses the range the hardware reports, so it can never ask for an unreachable
+    /// speed (the daemon clamps as a backstop).
+    @ViewBuilder
+    private var rpmSlider: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(language.text("Fan speed")).foregroundStyle(.secondary)
+                Spacer()
+                Text("\(appState.fixedRPM) RPM").font(.system(.body, design: .monospaced))
+            }
+            Slider(value: Binding(
+                get: { Double(appState.fixedRPM) },
+                set: { appState.setFixedRPM(Int($0)) }
+            ), in: rpmRange, step: 100)
+            .disabled(rpmRange.lowerBound >= rpmRange.upperBound)
+        }
+    }
+
+    private var rpmRange: ClosedRange<Double> {
+        guard let fan = appState.latestStatus?.fans.first, fan.maxRPM >= fan.minRPM else {
+            return 0...0
+        }
+        return Double(fan.minRPM)...Double(fan.maxRPM)
     }
 
     private func fanSummary(_ status: ThermalStatus) -> String {

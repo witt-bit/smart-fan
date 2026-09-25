@@ -76,5 +76,7 @@
   "Compact": "简洁",
   "Full": "完整",
   "Sample Interval": "采样频率",
-  "Time Window": "时间窗口"
+  "Time Window": "时间窗口",
+  "Fixed Rate": "固定速率",
+  "Fan speed": "风扇转速"
 }

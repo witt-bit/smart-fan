@@ -282,11 +282,12 @@ AppDelegate
 - [ ] **MB-1.6 更新架构文档**
   - 文件：`docs/menu-bar-label-validation.md`、`docs/project-architecture.md`
   - DoD：说明 `NSStatusItem` 取代 `MenuBarExtra` 的原因与影响。
-- [ ] **MB-1.7 首选项风扇页：固定速率模式**（新增需求）
-  - 要点：新增「固定速率」为**普通模式**（与均衡/性能/静音平级）；选中后用**滑块**在 `[minRPM, maxRPM]` 设定并固定转速；原 CLI `set` 的图形化替代。
-  - 持久化：`selectedProfile="fixed"` + `fixedRPM`（重启恢复）；右键菜单可切换。
+- [x] **MB-1.7 首选项风扇页：固定速率模式**（新增需求）
+  - 完成：新增 `FanProfile.fixed`（`handsOff`，像 Smart 一样**不进 `builtIn`**，以免影响 CLI `watch` 与既有测试）；新增 `FanProfile.uiProfiles` 统一菜单/选择器顺序。
+  - 风扇页选中「固定速率」时显示**滑块**（范围 = 风扇上报的 `[minRPM, maxRPM]`，步进 100）；右键菜单也可切换。
+  - 持久化：`selectedProfile="fixed"` + `fixedRPM`（重启恢复）；启动时经 `selectProfile` 同一路径重建 hold。
   - **不做自定义 Profile**（均为预置模式）。
-  - DoD：滑块设值后风扇固定；切走/Default 解除；重启后模式与 RPM 恢复。
+  - DoD：✅ 滑块设值后风扇固定；切走/Default 解除；重启后模式与 RPM 恢复（单测覆盖 `selectable("fixed")` / `uiProfiles` 顺序）。
 
 ### 阶段 P2 —— 图标+数字样式与度量
 
