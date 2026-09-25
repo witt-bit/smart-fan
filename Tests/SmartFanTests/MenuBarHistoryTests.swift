@@ -72,4 +72,16 @@ struct MenuBarHistoryTests {
         h.reset()
         #expect(h.samples.isEmpty)
     }
+
+    @Test("Extreme interval/window combinations stay bounded")
+    func extremeCombinations() {
+        for (interval, window) in [(10.0, 180.0), (1.0, 10.0), (5.0, 180.0)] {
+            var h = MenuBarHistory()
+            for i in 0...2000 { h.append(sample(Double(i)), interval: interval, window: window) }
+            let expected = Int(window / interval) + 1
+            #expect(h.samples.count > 0)
+            #expect(h.samples.count <= expected + 1)
+            #expect(h.samples.allSatisfy { $0.time > (h.samples.last?.time ?? .distantPast).addingTimeInterval(-window - 0.001) })
+        }
+    }
 }

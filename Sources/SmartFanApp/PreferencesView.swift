@@ -295,12 +295,15 @@ private struct MenuBarPreview: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let readings = MenuBarContent.readings(appState.displayConfig, status: appState.latestStatus,
-                                               fahrenheit: appState.useFahrenheit)
-        Image(nsImage: MenuBarLabelImage.make(
-            symbol: MenuBarLabel.symbol(for: appState.monitorState),
-            temperature: readings.temperature, rpm: readings.rpm,
-            needsWarning: false, colorScheme: colorScheme))
+        Image(nsImage: MenuBarContent.image(
+            config: appState.displayConfig,
+            history: appState.menuBarHistory,
+            monitorState: appState.monitorState,
+            status: appState.latestStatus,
+            fahrenheit: appState.useFahrenheit,
+            needsWarning: false,
+            colorScheme: colorScheme,
+            statusBarThickness: NSStatusBar.system.thickness))
         .frame(height: NSStatusBar.system.thickness)
         .padding(.horizontal, 6)
         .background(RoundedRectangle(cornerRadius: 5).fill(Color.secondary.opacity(0.18)))

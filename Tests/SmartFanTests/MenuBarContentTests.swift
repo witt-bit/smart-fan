@@ -83,4 +83,74 @@ struct MenuBarContentTests {
             #expect(font.pointSize >= 8)
         }
     }
+
+    // MARK: - Curves
+
+    private func history(_ temps: [Float?], _ rpms: [Float?]) -> MenuBarHistory {
+        var h = MenuBarHistory()
+        let base = Date(timeIntervalSince1970: 1_000_000)
+        for (index, pair) in zip(temps, rpms).enumerated() {
+            h.append(.init(time: base.addingTimeInterval(Double(index)),
+                           temperature: pair.0, rpm: pair.1), interval: 1, window: 60)
+        }
+        return h
+    }
+
+    @Test("Curve inputs follow the style")
+    func curveInputs() {
+        let h = history([40, 50, 60], [1000, 2000, 3000])
+        var config = MenuBarDisplayConfig.default
+
+        config.style = .temperatureCurve
+        var curves = MenuBarContent.curves(config, history: h)
+        #expect(curves.count == 1)
+        #expect(curves[0].values == [40, 50, 60])
+
+        config.style = .rpmCurve
+        curves = MenuBarContent.curves(config, history: h)
+        #expect(curves.count == 1)
+        #expect(curves[0].values == [1000, 2000, 3000])
+
+        config.style = .dualCurve
+        #expect(MenuBarContent.curves(config, history: h).count == 2)
+
+        config.style = .numbers
+        #expect(MenuBarContent.curves(config, history: h).isEmpty)
+    }
+
+    @Test("Unreadable samples are left out of a curve, not plotted as zero")
+    func curveSkipsUnreadable() {
+        let h = history([40, nil, 60], [nil, 2000, nil])
+        var config = MenuBarDisplayConfig.default
+        config.style = .temperatureCurve
+        #expect(MenuBarContent.curves(config, history: h)[0].values == [40, 60])
+        config.style = .rpmCurve
+        #expect(MenuBarContent.curves(config, history: h)[0].values == [2000])
+    }
+
+    @Test("The curve canvas fills the bar, is coloured, and draws for thin data")
+    func curveImage() {
+        let empty = MenuBarLabelImage.makeCurve(curves: [(values: [], color: .systemOrange)],
+                                                needsWarning: false, statusBarThickness: 22)
+        #expect(!empty.isTemplate)   // coloured, so never a template
+        #expect(empty.size.width == MenuBarLabelImage.curveWidth)
+        #expect(empty.size.height == 22)
+        #expect(empty.size.width <= MenuBarLabelImage.maximumWidth)
+
+        // Zero, one and many points all render without trapping.
+        for values: [Float] in [[], [50], [1, 2, 3, 4, 5, 6, 7, 8], [10, 10, 10]] {
+            let image = MenuBarLabelImage.makeCurve(curves: [(values, .systemTeal)],
+                                                    needsWarning: false, statusBarThickness: 24)
+            #expect(image.size.width == MenuBarLabelImage.curveWidth)
+            #expect(image.size.height == 24)
+        }
+
+        // A warning turns the whole curve item red, matching the icon. Both must render.
+        for warning in [false, true] {
+            let image = MenuBarLabelImage.makeCurve(curves: [(values: [1, 2], color: .systemOrange),
+                                                             (values: [9, 8], color: .systemTeal)],
+                                                    needsWarning: warning, statusBarThickness: 24)
+            #expect(!image.isTemplate)
+        }
+    }
 }

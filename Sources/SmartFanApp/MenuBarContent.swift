@@ -7,8 +7,10 @@
 //  See docs/menu-bar-display-plan.md §4 (V1/V4) and §3 (metrics).
 //
 
+import AppKit
 import Foundation
 import SmartFanCore
+import SwiftUI
 
 enum MenuBarContent {
     /// Integer temperature reading, or nil when unavailable/unrepresentable.
@@ -70,5 +72,45 @@ enum MenuBarContent {
             visible.temperature ? temperature(metric, fahrenheit: fahrenheit, units: config.unitDisplay) : nil,
             visible.rpm ? rpm(status?.fanRPM, units: config.unitDisplay) : nil
         )
+    }
+
+    /// Curve colours (plan §4 V3).
+    static let temperatureCurveColor = NSColor.systemOrange
+    static let rpmCurveColor = NSColor.systemTeal
+
+    /// The curves the style asks for, oldest → newest. Readings that were
+    /// unreadable are left out rather than plotted as zero.
+    static func curves(_ config: MenuBarDisplayConfig, history: MenuBarHistory)
+        -> [(values: [Float], color: NSColor)] {
+        let temperatures = history.samples.compactMap { $0.temperature }
+        let rpms = history.samples.compactMap { $0.rpm }
+        switch config.style {
+        case .numbers: return []
+        case .temperatureCurve: return [(temperatures, temperatureCurveColor)]
+        case .rpmCurve: return [(rpms, rpmCurveColor)]
+        case .dualCurve: return [(temperatures, temperatureCurveColor), (rpms, rpmCurveColor)]
+        }
+    }
+
+    /// The single image the menu bar item shows. Shared with the preferences preview
+    /// so what the user sees there is exactly what the menu bar renders.
+    static func image(config: MenuBarDisplayConfig,
+                      history: MenuBarHistory,
+                      monitorState: MonitorState,
+                      status: ThermalStatus?,
+                      fahrenheit: Bool,
+                      needsWarning: Bool,
+                      colorScheme: ColorScheme,
+                      statusBarThickness: CGFloat) -> NSImage {
+        if config.style.usesCurve {
+            return MenuBarLabelImage.makeCurve(curves: curves(config, history: history),
+                                                needsWarning: needsWarning,
+                                                statusBarThickness: statusBarThickness)
+        }
+        let reading = readings(config, status: status, fahrenheit: fahrenheit)
+        return MenuBarLabelImage.make(symbol: MenuBarLabel.symbol(for: monitorState),
+                                      temperature: reading.temperature, rpm: reading.rpm,
+                                      needsWarning: needsWarning, colorScheme: colorScheme,
+                                      statusBarThickness: statusBarThickness)
     }
 }

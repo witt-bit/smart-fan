@@ -62,6 +62,12 @@ final class StatusItemController {
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.refresh() } }
             .store(in: &cancellables)
 
+        // Curve styles redraw as samples arrive.
+        appState.$menuBarHistory
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in MainActor.assumeIsolated { self?.refresh() } }
+            .store(in: &cancellables)
+
         // Redraw for the menu bar's light/dark appearance (the warning badge is
         // non-template and must pick its foreground per appearance). KVO on the
         // button's effectiveAppearance — AppKit posts no notification for this.
@@ -99,18 +105,23 @@ final class StatusItemController {
         let isDark = button.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         let scheme: ColorScheme = isDark ? .dark : .light
 
-        let readings = MenuBarContent.readings(appState.displayConfig, status: appState.latestStatus,
-                                               fahrenheit: appState.useFahrenheit)
+        let config = appState.displayConfig
         let needsWarning = appState.daemonVersionMismatch != nil || appState.daemonUnreachable
 
-        button.image = MenuBarLabelImage.make(
-            symbol: MenuBarLabel.symbol(for: appState.monitorState),
-            temperature: readings.temperature, rpm: readings.rpm,
-            needsWarning: needsWarning, colorScheme: scheme,
+        button.image = MenuBarContent.image(
+            config: config,
+            history: appState.menuBarHistory,
+            monitorState: appState.monitorState,
+            status: appState.latestStatus,
+            fahrenheit: appState.useFahrenheit,
+            needsWarning: needsWarning,
+            colorScheme: scheme,
             statusBarThickness: button.bounds.height > 0 ? button.bounds.height : NSStatusBar.system.thickness)
 
         // The old MenuBarExtra label carried an accessibility label/value; a bare
         // NSStatusItem has none unless it is set explicitly.
+        let readings = MenuBarContent.readings(config, status: appState.latestStatus,
+                                               fahrenheit: appState.useFahrenheit)
         let reading = [readings.temperature, readings.rpm].compactMap { $0 }.joined(separator: " · ")
         let spoken = reading.isEmpty ? language.text("Temperature unavailable") : reading
         button.toolTip = language.text("SmartFan: {reading}", ["reading": spoken])

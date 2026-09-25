@@ -54,8 +54,7 @@ struct MenuBarLabel: View {
 
 /// The menu bar item draws one hand-built `NSImage`; AppKit renders the drawing
 /// handler at the destination screen's backing scale. A minimum logical width keeps
-/// the item from resizing as the digit count changes.
-@MainActor
+/// the item from resizing as the digit count changes.@MainActor
 enum MenuBarLabelImage {
     private static let font = NSFont.monospacedDigitSystemFont(
         ofSize: NSFont.menuBarFont(ofSize: 0).pointSize, weight: .regular
@@ -109,6 +108,52 @@ enum MenuBarLabelImage {
     /// Widest the whole item may get before it starts shoving its neighbours
     /// (plan §4 V4). The gap is squeezed first; text is never truncated.
     static let maximumWidth: CGFloat = 72
+
+    /// Width of the sparkline canvas (plan §4 V2/V4).
+    static let curveWidth: CGFloat = 40
+
+    /// One or two sparklines filling the menu bar height. Each curve is normalised
+    /// to its **own** min/max, so a temperature and an RPM curve can share one
+    /// canvas. Fewer than two points draws a flat mid line rather than nothing.
+    /// Coloured (never a template) because a template can only be black or white.
+    static func makeCurve(curves: [(values: [Float], color: NSColor)],
+                          needsWarning: Bool,
+                          statusBarThickness: CGFloat = NSStatusBar.system.thickness) -> NSImage {
+        let size = NSSize(width: curveWidth, height: max(statusBarThickness, 14))
+        let inset: CGFloat = 1.5
+        let image = NSImage(size: size, flipped: false) { _ in
+            for curve in curves {
+                // An alert is signalled by turning the whole item red, matching the
+                // icon's behaviour (there is no icon in the curve styles).
+                let color = needsWarning ? NSColor.systemRed : curve.color
+                let path = NSBezierPath()
+                path.lineWidth = 1.5
+                path.lineJoinStyle = .round
+                path.lineCapStyle = .round
+                let values = curve.values.filter { $0.isFinite }
+                let x0 = inset, x1 = size.width - inset
+                let y0 = inset, usable = size.height - 2 * inset
+                if values.count < 2 {
+                    path.move(to: NSPoint(x: x0, y: size.height / 2))
+                    path.line(to: NSPoint(x: x1, y: size.height / 2))
+                } else {
+                    let low = values.min() ?? 0
+                    let span = (values.max() ?? 0) - low
+                    for (index, value) in values.enumerated() {
+                        let x = x0 + (x1 - x0) * CGFloat(index) / CGFloat(values.count - 1)
+                        let norm = span > 0 ? CGFloat((value - low) / span) : 0.5
+                        let point = NSPoint(x: x, y: y0 + usable * norm)
+                        if index == 0 { path.move(to: point) } else { path.line(to: point) }
+                    }
+                }
+                color.setStroke()
+                path.stroke()
+            }
+            return true
+        }
+        image.isTemplate = false
+        return image
+    }
 
     /// Two-line variant: temperature above, RPM below, to the right of the icon.
     /// With a single value it falls back to the one-line layout, so the menu bar

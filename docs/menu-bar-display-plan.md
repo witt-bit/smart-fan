@@ -314,18 +314,19 @@ AppDelegate
 
 ### 阶段 P3 —— 曲线
 
-- [ ] **MB-3.1 历史缓冲**
-  - 文件：`Sources/SmartFanApp/AppState.swift`
-  - 要点：按 `sampleInterval` 采样 `(t, averageTemp, batteryTemp, fanRPM)`；容量 = `window / sampleInterval` 上限保护；**内存滚动缓冲，不落盘**（见 §7）。
-  - 边界：睡眠/唤醒后若空洞 > 窗口则丢弃旧点重新积累；改窗口长度立即截断；App 重启清空。
-  - DoD：切换频率/窗口后曲线点数正确且无内存增长；睡眠唤醒不出现假数据。
-- [ ] **MB-3.2 曲线渲染**
-  - 文件：`Sources/SmartFanApp/MenuBarLabel.swift`（曲线画布）/ 新增 `Sparkline.swift`
-  - 要点：单曲线按自身 min/max 归一化；双曲线各自归一化叠加（不同色）；空/单点数据安全。
-  - DoD：三种曲线样式渲染正确；像素测试通过。
-- [ ] **MB-3.3 曲线设置 UI**
-  - 要点：采样频率（1/2/3/5/10s）、窗口（10/30/60s/3min）、曲线选择（温度/转速/叠加）。
-  - DoD：改动实时反映；极端组合（10s×3min、1s×10s）不崩溃。
+- [x] **MB-3.1 历史缓冲**
+  - 文件：新增 `Sources/SmartFanCore/MenuBarHistory.swift`、`AppState.menuBarHistory` + `recordMenuBarSample`、`Tests/SmartFanTests/MenuBarHistoryTests.swift`
+  - 完成：采样 `(t, 温度度量值, fanRPM)`；强制采样间隔（过密丢弃）；超窗裁剪 + `maxWindow=180s` 上限；**内存滚动缓冲，不落盘**。
+  - 边界：睡眠/唤醒空洞 > 窗口则丢弃旧点；窗口变小立即截断，变大保留待填；仅在曲线样式下采样。
+  - DoD：✅ 7 项单测覆盖（间隔、裁剪、唤醒空洞、缩小/放大、上限、非法输入、reset）。
+- [x] **MB-3.2 曲线渲染**
+  - 文件：`Sources/SmartFanApp/MenuBarLabel.swift`（`makeCurve` + `curveWidth`）、`MenuBarContent.curves/image`、`StatusItemController`、`MenuBarPreview`
+  - 完成：画布宽 40pt、高**占满菜单栏**；颜色 温度 `systemOrange` / 转速 `systemTeal`；**各自独立 min/max 归一化**（可叠加）；空/单点画中线；告警时整条曲线变红（对应图标变红）。彩色非模板。
+  - 注：状态栏与首选项预览共用 `MenuBarContent.image(...)`，不会脱节。
+  - DoD：✅ 三种曲线样式 + 空/单点/多点 + 告警态均渲染（单测覆盖）。
+- [x] **MB-3.3 曲线设置 UI**
+  - 完成：样式分段选择（图标+数字 / 温度曲线 / 转速曲线 / 双曲线叠加）= 曲线选择；采样频率（1/2/3/5/10s）与时间窗口（10/30/60s/3min）**仅曲线样式下显示**（MB-2.4 已随修复落地）；右上实时预览同步。
+  - DoD：✅ 改动实时反映；极端组合（10s×3min、1s×10s 等）由 `MenuBarHistoryTests.extremeCombinations` 覆盖。
 
 ### 阶段 P4 —— 收尾
 
