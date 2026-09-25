@@ -276,9 +276,9 @@ AppDelegate
   - 要点：`NSMenu`；`Profile` 子菜单复用 `AppState.selectProfile/resetAuto/setSmart`，勾选态跟随 `activeProfile`，含 `Default`；`退出` 调 `NSApp.terminate`。
   - 完成：随 MB-1.1 一并实现（`AppDelegate.showContextMenu` / `profileMenu`）。
   - DoD：✅ 右键三项均可用；Profile 勾选态与首选项一致。
-- [ ] **MB-1.5 移除原下拉菜单**
-  - 要点：删除 `MenuBarExtra` 场景与 `MenuBarView` 的下拉用法；确认无遗留引用。
-  - DoD：项目内不再引用 `MenuBarExtra`；`swift build` 通过。
+- [x] **MB-1.5 移除原下拉菜单**
+  - 完成：删除 `Sources/SmartFanApp/MenuBarView.swift`（含 `ExternalHoldBanner` / `SectionHeader` / `TemperatureRow`）；四个首选项页改为 internal，`LocalizedPanelTests` 改为渲染**首选项四页**（三语言 × 告警态）。
+  - DoD：✅ 源码中仅剩解释性注释提及 `MenuBarExtra`；`swift build` 通过；测试全绿。
 - [ ] **MB-1.6 更新架构文档**
   - 文件：`docs/menu-bar-label-validation.md`、`docs/project-architecture.md`
   - DoD：说明 `NSStatusItem` 取代 `MenuBarExtra` 的原因与影响。

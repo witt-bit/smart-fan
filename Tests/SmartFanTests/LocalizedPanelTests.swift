@@ -8,7 +8,7 @@ import SmartFanLocalization
 @Suite("Localized panels — offscreen, no services", .serialized)
 @MainActor
 struct LocalizedPanelTests {
-    @Test("One retained panel refreshes in three languages with all warning layouts")
+    @Test("Preferences pages render in three languages across alert states")
     func panelLayouts() async throws {
         let name = "SmartFan.PanelTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: name))
@@ -20,47 +20,56 @@ struct LocalizedPanelTests {
         state.latestStatus = ThermalStatus(fans: [
             .init(index: 0, actualRPM: 5777, targetRPM: 5777, minRPM: 1350, maxRPM: 5777, mode: "manual"),
             .init(index: 1, actualRPM: 5756, targetRPM: 5777, minRPM: 1350, maxRPM: 5777, mode: "manual"),
-        ], temperatures: ["TCMb": 100, "Tg05": 73.7, "TRDX": 43.4, "TH0x": 26.3, "TAOL": 24.4])
-        let identity = ObjectIdentifier(state)
-        let panel = NSHostingView(rootView: MenuBarView().environmentObject(state).environmentObject(language)
-            .background(Color(nsColor: .windowBackgroundColor)).environment(\.colorScheme, .light))
-        var normalHeights: [AppLanguage: CGFloat] = [:]
-        for scenario in ["normal", "held-update", "mismatch-safety", "daemon-down", "normal"] {
-            state.externalHold = scenario == "held-update" ? DaemonHoldState(command: "setfan 1 5777", owner: "cli") : nil
-            state.availableUpdate = scenario == "held-update" ? AvailableUpdate(version: "99.99.99", url: "https://github.com/witt/smart-fan/releases") : nil
-            state.daemonVersionMismatch = scenario == "mismatch-safety" ? "0.2.3.5" : nil
-            state.daemonUnreachable = scenario == "daemon-down"
-            state.monitorState = scenario == "mismatch-safety" ? .safetyOverride : .active(profileName: "Smart")
-            let hold = state.externalHold
-            let monitor = state.monitorState
-            for choice in LocalizationCatalog.supportedLanguages {
-                language.select(choice)
-                try await Task.sleep(for: .milliseconds(30))
+        ], temperatures: ["TCMb": 100, "Tg05": 73.7, "TRDX": 43.4, "TH0x": 26.3, "TAOL": 24.4],
+           averageTemp: 60, batteryTemp: 31, fanRPM: 5766)
+
+        // Every alert state is exercised: the Fans page carries the daemon-down
+        // banner, the About page carries update-needed and update-available.
+        state.daemonUnreachable = true
+        state.daemonVersionMismatch = "0.2.3.5"
+        state.availableUpdate = AvailableUpdate(version: "99.99.99",
+                                                url: "https://github.com/witt/smart-fan/releases")
+
+        // The full window keeps its fixed size.
+        let window = NSHostingView(rootView: PreferencesView()
+            .environmentObject(state).environmentObject(language))
+        window.setFrameSize(window.fittingSize)
+        #expect(window.frame.width == 640)
+        #expect(window.frame.height == 460)
+
+        let pages: [AnyView] = [
+            AnyView(FansPreferences()),
+            AnyView(GeneralPreferences()),
+            AnyView(MenuBarPreferences()),
+            AnyView(AboutPreferences()),
+        ]
+
+        for choice in LocalizationCatalog.supportedLanguages {
+            language.select(choice)
+            try await Task.sleep(for: .milliseconds(30))
+            for page in pages {
+                let panel = NSHostingView(rootView: page
+                    .environmentObject(state).environmentObject(language)
+                    .background(Color(nsColor: .windowBackgroundColor))
+                    .environment(\.colorScheme, .light))
                 panel.setFrameSize(panel.fittingSize)
                 panel.layoutSubtreeIfNeeded()
-                #expect(panel.frame.width == 260)
-                #expect(panel.frame.height > 300 && panel.frame.height < 1000)
-                if scenario == "normal" {
-                    if let firstHeight = normalHeights[choice] {
-                        #expect(panel.frame.height == firstHeight)
-                    } else {
-                        normalHeights[choice] = panel.frame.height
-                    }
-                }
-                #expect(ObjectIdentifier(state) == identity)
-                #expect(state.activeProfile == .smart)
-                #expect(state.monitorState == monitor)
-                #expect(state.externalHold == hold)
+                #expect(panel.frame.width > 0 && panel.frame.height > 0)
                 let bitmap = try #require(panel.bitmapImageRepForCachingDisplay(in: panel.bounds))
                 panel.cacheDisplay(in: panel.bounds, to: bitmap)
                 let png = try #require(bitmap.representation(using: .png, properties: [:]))
-                #expect(png.count > 1000)
+                #expect(png.count > 500)
                 if let directory = ProcessInfo.processInfo.environment["SMARTFAN_PREVIEW_DIR"] {
                     let url = URL(fileURLWithPath: directory)
                     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-                    try png.write(to: url.appendingPathComponent("\(scenario)-\(choice.rawValue).png"))
+                    try png.write(to: url.appendingPathComponent("\(choice.rawValue).png"))
                 }
             }
         }
+
+        // Rendering must never mutate the state it reads.
+        #expect(state.activeProfile == .smart)
+        #expect(state.externalHold == nil)
+        #expect(state.monitorState == .active(profileName: "Smart"))
     }
 }

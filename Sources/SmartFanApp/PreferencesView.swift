@@ -82,7 +82,7 @@ struct PreferencesView: View {
 
 /// Live readings and quick mode controls. The alert strip and the full banner
 /// migration land in MB-1.3; this keeps the app usable in the meantime.
-private struct FansPreferences: View {
+struct FansPreferences: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var language: AppLanguageStore
 
@@ -196,7 +196,7 @@ private struct FansPreferences: View {
 
 // MARK: - General
 
-private struct GeneralPreferences: View {
+struct GeneralPreferences: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var language: AppLanguageStore
 
@@ -226,7 +226,7 @@ private struct GeneralPreferences: View {
 
 // MARK: - Menu Bar
 
-private struct MenuBarPreferences: View {
+struct MenuBarPreferences: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var language: AppLanguageStore
 
@@ -332,7 +332,7 @@ private struct PickerRow<Value: Hashable, Content: View>: View {
 
 // MARK: - About
 
-private struct AboutPreferences: View {
+struct AboutPreferences: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var language: AppLanguageStore
 

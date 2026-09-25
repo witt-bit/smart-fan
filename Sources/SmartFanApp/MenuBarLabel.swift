@@ -52,8 +52,9 @@ struct MenuBarLabel: View {
     }
 }
 
-/// A minimum logical image size survives MenuBarExtra's native label measurement.
-/// AppKit renders the drawing handler at the destination screen's backing scale.
+/// The menu bar item draws one hand-built `NSImage`; AppKit renders the drawing
+/// handler at the destination screen's backing scale. A minimum logical width keeps
+/// the item from resizing as the digit count changes.
 @MainActor
 enum MenuBarLabelImage {
     private static let font = NSFont.monospacedDigitSystemFont(
