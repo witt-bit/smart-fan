@@ -88,8 +88,13 @@ struct FansPreferences: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Alerts, in priority order: fan control is impossible without the daemon;
+            // a terminal hold means the app is intentionally not controlling.
             if appState.daemonUnreachable {
                 DaemonDownBanner(onRestart: { appState.restartDaemon() })
+            }
+            if let hold = appState.externalHold {
+                ExternalHoldBanner(hold: hold)
             }
 
             Text(language.text("Current Mode")).font(.headline)

@@ -13,6 +13,54 @@ import SwiftUI
 import SmartFanCore
 import SmartFanLocalization
 
+/// A hold set from the terminal (`sudo smart-fan max` / `set`). The app reflects it
+/// rather than fighting it, so this explains what is pinned and how to take over.
+/// The plan retires this alert once GUI Fixed Rate fully covers the case; until then
+/// dropping it would leave the app silently not controlling the fans.
+struct ExternalHoldBanner: View {
+    @EnvironmentObject var language: AppLanguageStore
+    let hold: DaemonHoldState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(language.text("Fans held from Terminal"), systemImage: "terminal.fill")
+                .font(.caption.bold())
+                .foregroundStyle(.orange)
+
+            Text(describe(hold.command))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(language.text("Press Default below (or pick a profile) to release."))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.12))
+    }
+
+    private func describe(_ command: String?) -> String {
+        let parts = (command ?? "").split(separator: " ").map(String.init)
+        switch parts.first {
+        // Approximate language on purpose: the held value is the fan's TARGET, but the
+        // RPM shown in the fan rows is the actual tach, which hovers ~1% around it. Exact
+        // wording ("pinned to 3500") next to a row reading 3488/3512 looks like a bug.
+        case "max":
+            return language.text("Fans are held at maximum. The app won't adjust them until you take over.")
+        case "set" where parts.count > 1:
+            return language.text("Fans are held at about {rpm} RPM. The app won't adjust them until you take over.", ["rpm": parts[1]])
+        case "setfan" where parts.count > 2:
+            return language.text("Fan {fan} is held at about {rpm} RPM. The app won't adjust fans until you take over.", ["fan": parts[1], "rpm": parts[2]])
+        default:
+            return language.text("Fans are held manually. The app won't adjust them until you take over.")
+        }
+    }
+}
+
 /// Shown when the daemon has stopped answering — fan control is impossible until
 /// it's back. Offers a one-click restart (launchd kickstart via a macOS admin
 /// prompt). The daemon's KeepAlive usually restarts it on its own, so this is the

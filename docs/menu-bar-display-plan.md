@@ -334,9 +334,11 @@ AppDelegate
   - 完成：脚本比对代码中所有 `language.text("…")` 字面量与目录键——**无缺失（无英文泄漏）**；删除下拉菜单下线后遗留的 11 个死键（FANS/PROFILES/TEMPERATURES/外部占用横幅等），新增 `Status`。
   - 现为 **70 键 × 三语言**；繁体由 `scripts/update-traditional.swift` 生成（测试校验等于简→繁转换）。
   - DoD：✅ 三语言键齐全；`LocalizationTests` 全过；打包校验通过。
-- [ ] **MB-4.2 测试补全**
-  - 文件：`Tests/SmartFanTests/MenuBarLabelTests.swift` 等
-  - DoD：度量、配置、数字排版、曲线渲染均有覆盖；Debug/Release 全绿。
+- [x] **MB-4.2 测试补全**
+  - 完成：将 Fixed Rate 的**夹取与滑块范围**抽为 `FanProfile.clampFixedRPM` / `fixedRPMRange`（纯函数），新增 `FixedRateTests`；新增 `MenuBarStyle.usesCurve` 测。
+  - 发现并修掉一个**名字遮蔽 bug**：在 `FanProfile` 内裸写 `max(...)` 会解析到 `FanProfile.max`（Max 模式），已改用 `Swift.max/Swift.min`。
+  - 覆盖：配置（含归一化/退化）、历史缓冲（含极值组合）、度量消费与缺失降级、数字排版与字体自适应、曲线渲染（空/单点/多点/告警）、固定速率范围。
+  - DoD：✅ **142 项测试，Debug 与 Release 均全绿**；断连客户端与打包校验通过。
 - [ ] **MB-4.3 文档**
   - 文件：`README.md`、`CHANGELOG.md`、新增 `docs/menu-bar-display-validation.md`
   - DoD：使用说明与验收记录齐全。
