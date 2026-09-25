@@ -3,6 +3,15 @@
 Validated on 2026-09-22, starting from clean commit
 `57a4c4296edc6eae386ed64159bc285ae53cf2aa` (0.2.3.11).
 
+> **Superseded in part (1.0.0).** `MenuBarExtra` was replaced by a custom
+> `NSStatusItem` (left click → preferences, right click → menu) because
+> `MenuBarExtra` cannot tell a left click from a right click. See
+> [menu-bar-display-plan.md](menu-bar-display-plan.md) and
+> [menu-bar-display-validation.md](menu-bar-display-validation.md).
+> The **measurement findings** below still hold — the minimum-width reservation,
+> the icon+digits geometry and the pixel-test method are the basis of the current
+> renderer. Only the “no custom `NSStatusItem`” statement is void.
+
 ## Behavior and scope
 
 The native `MenuBarExtra` previously measured an icon plus variable-length text.

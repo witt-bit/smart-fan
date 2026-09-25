@@ -25,7 +25,7 @@
 |---|---|---|
 | `SmartFanCore` | ~5,089 | 核心：SMC 读写、风扇控制、温控曲线、Daemon、协议、日志 |
 | `smart-fan`（CLI） | ~1,449 | 命令行入口（`max`/`auto`/`set`/`status`/`discover`/`watch`/`calibrate`/`log` 等子命令） |
-| `SmartFanApp` | ~1,184 | SwiftUI 菜单栏应用（`AppState`、`MenuBarView`/`MenuBarLabel`） |
+| `SmartFanApp` | ~1,900 | AppKit 菜单栏应用：自定义 `NSStatusItem` + 首选项窗口（SwiftUI 承载） |
 | `SmartFanLocalization` | ~147 | 英 / 简中 / 繁中本地化资源 |
 | `Tests/SmartFanTests` | — | 20+ 测试文件，另含 socket 断连客户端夹具 |
 
@@ -47,7 +47,7 @@
 ## 分层架构
 
 ```
-        CLI (smart-fan)              SwiftUI 菜单栏 App
+        CLI (smart-fan)              AppKit 菜单栏 App
                  \                    /
                   \                  /
                    v                v
@@ -60,6 +60,21 @@
                  |
           FanControl → SMCConnection → AppleSMC (IOKit)
 ```
+
+### 菜单栏应用结构（1.0.0 起）
+
+自 1.0.0 起不再使用 SwiftUI 的 `MenuBarExtra`（它无法区分左/右键），改为 AppKit 生命周期：
+
+| 文件 | 作用 |
+|---|---|
+| `SmartFanApp.swift` | `@main AppDelegate`：`NSApplication` 生命周期、单实例、退出时按 owner 复位风扇 |
+| `StatusItemController.swift` | `NSStatusItem`：渲染标签图、左键→首选项、右键→菜单 |
+| `PreferencesWindowController.swift` | `NSWindow` + `NSHostingController` 承载首选项 |
+| `PreferencesView.swift` | 左竖排标签四页：风扇 / 通用 / 菜单栏 / 关于 |
+| `MenuBarLabel.swift` | 手绘单张 `NSImage`（数字两行 / 曲线画布 / 红色告警态） |
+| `MenuBarContent.swift` | 数值格式化（单位/度量）与曲线数据 → 图像 |
+| `Banners.swift` | 风扇页/关于页的告警条（服务失效、终端占用、需更新、有更新） |
+
 
 ### 1. 命令路由：`FanCommandRouter`
 

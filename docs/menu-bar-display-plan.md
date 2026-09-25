@@ -279,9 +279,10 @@ AppDelegate
 - [x] **MB-1.5 移除原下拉菜单**
   - 完成：删除 `Sources/SmartFanApp/MenuBarView.swift`（含 `ExternalHoldBanner` / `SectionHeader` / `TemperatureRow`）；四个首选项页改为 internal，`LocalizedPanelTests` 改为渲染**首选项四页**（三语言 × 告警态）。
   - DoD：✅ 源码中仅剩解释性注释提及 `MenuBarExtra`；`swift build` 通过；测试全绿。
-- [ ] **MB-1.6 更新架构文档**
+- [x] **MB-1.6 更新架构文档**
   - 文件：`docs/menu-bar-label-validation.md`、`docs/project-architecture.md`
-  - DoD：说明 `NSStatusItem` 取代 `MenuBarExtra` 的原因与影响。
+  - 完成：`menu-bar-label-validation.md` 顶部加**部分废弃说明**（`MenuBarExtra` → 自定义 `NSStatusItem`，测量的最小宽度/像素方法仍有效）；`project-architecture.md` 更新模块表与分层图，新增「菜单栏应用结构（1.0.0 起）」文件表。
+  - DoD：✅ 两文档均说明取代原因与影响。
 - [x] **MB-1.7 首选项风扇页：固定速率模式**（新增需求）
   - 完成：新增 `FanProfile.fixed`（`handsOff`，像 Smart 一样**不进 `builtIn`**，以免影响 CLI `watch` 与既有测试）；新增 `FanProfile.uiProfiles` 统一菜单/选择器顺序。
   - 风扇页选中「固定速率」时显示**滑块**（范围 = 风扇上报的 `[minRPM, maxRPM]`，步进 100）；右键菜单也可切换。
@@ -339,9 +340,9 @@ AppDelegate
   - 发现并修掉一个**名字遮蔽 bug**：在 `FanProfile` 内裸写 `max(...)` 会解析到 `FanProfile.max`（Max 模式），已改用 `Swift.max/Swift.min`。
   - 覆盖：配置（含归一化/退化）、历史缓冲（含极值组合）、度量消费与缺失降级、数字排版与字体自适应、曲线渲染（空/单点/多点/告警）、固定速率范围。
   - DoD：✅ **142 项测试，Debug 与 Release 均全绿**；断连客户端与打包校验通过。
-- [ ] **MB-4.3 文档**
-  - 文件：`README.md`、`CHANGELOG.md`、新增 `docs/menu-bar-display-validation.md`
-  - DoD：使用说明与验收记录齐全。
+- [x] **MB-4.3 文档**
+  - 完成：README 重写「功能与界面」与「使用」——新增「菜单栏与首选项」（左右键、四种样式、可配置项）、模式表加入固定速率；CHANGELOG 的 1.0.0 条目补齐菜单栏特性；新增 `docs/menu-bar-display-validation.md`（含**未验证项与残余风险**）并从 README 链接。
+  - DoD：✅ 使用说明与验收记录齐全。
 - [x] **MB-4.4 多机型/电池健壮性**
   - 完成：度量缺失一律返回 `nil`（**不为 0**）——无电池传感器机型体感温度为 `nil`；无风扇读数时转速为 `nil`；无传感器时均温为 `nil`。首选项读数显示 `—`，菜单栏数字直接省去（仅存图标）。
   - 固定速率：硬件未上报 `maxRPM` 时不再钳到 0（会变成停转），改为原值透传（由守护进程纠底），滑块回退到 `1000...7000`。
