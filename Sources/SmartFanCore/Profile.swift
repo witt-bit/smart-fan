@@ -250,6 +250,27 @@ extension FanProfile {
         guard let id else { return .silent }
         return uiProfiles.first { $0.id == id } ?? .silent
     }
+
+    // MARK: - Fixed Rate range
+
+    /// Used when the hardware reports no usable range, so the slider still works;
+    /// the daemon clamps whatever is sent.
+    public static let fallbackFixedRPMRange = 1000...7000
+
+    /// The slider's range: the fan's own reported range, or `fallbackFixedRPMRange`.
+    public static func fixedRPMRange(fan: ThermalStatus.FanStatus?) -> ClosedRange<Int> {
+        guard let fan, fan.maxRPM > 0, fan.maxRPM >= fan.minRPM else { return fallbackFixedRPMRange }
+        return fan.minRPM...fan.maxRPM
+    }
+
+    /// Clamp a Fixed Rate request to the fan's reported range. Passes the value
+    /// through unchanged when the range is unknown (maxRPM == 0 on some machines) —
+    /// clamping there would mean "stop the fans", which is never what was asked.
+    /// (`Swift.max`/`Swift.min`: inside `FanProfile`, a bare `max` is the Max profile.)
+    public static func clampFixedRPM(_ rpm: Int, fan: ThermalStatus.FanStatus?) -> Int {
+        guard let fan, fan.maxRPM > 0, fan.maxRPM >= fan.minRPM else { return Swift.max(0, rpm) }
+        return Swift.min(Swift.max(rpm, fan.minRPM), fan.maxRPM)
+    }
 }
 
 // MARK: - Persistence

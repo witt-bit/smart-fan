@@ -57,6 +57,14 @@ struct MenuBarDisplayConfigTests {
         #expect(MenuBarDisplayConfig.load(from: defaults).window == 60)
     }
 
+    @Test("Only the number style skips curves")
+    func usesCurve() {
+        #expect(MenuBarStyle.numbers.usesCurve == false)
+        for style in [MenuBarStyle.temperatureCurve, .rpmCurve, .dualCurve] {
+            #expect(style.usesCurve)
+        }
+    }
+
     @Test("Both numbers may be off (an icon-only item is a valid choice)")
     func bothNumbersMayBeOff() {
         let off = MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: false)

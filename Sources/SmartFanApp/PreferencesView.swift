@@ -186,10 +186,8 @@ struct FansPreferences: View {
     /// range otherwise (some machines report no min/max), so the control still works;
     /// the daemon clamps whatever we send.
     private var rpmRange: ClosedRange<Double> {
-        guard let fan = appState.latestStatus?.fans.first, fan.maxRPM > 0, fan.maxRPM >= fan.minRPM else {
-            return 1000...7000
-        }
-        return Double(fan.minRPM)...Double(fan.maxRPM)
+        let range = FanProfile.fixedRPMRange(fan: appState.latestStatus?.fans.first)
+        return Double(range.lowerBound)...Double(range.upperBound)
     }
 
     @ViewBuilder
