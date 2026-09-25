@@ -330,18 +330,20 @@ AppDelegate
 
 ### 阶段 P4 —— 收尾
 
-- [ ] **MB-4.1 本地化**
-  - 文件：`Sources/SmartFanLocalization/Resources/{en,zh-Hans,zh-Hant}.json`（+ `scripts/update-traditional.swift` 生成繁体）
-  - DoD：三语言键齐全；现有本地化测试通过。
+- [x] **MB-4.1 本地化**
+  - 完成：脚本比对代码中所有 `language.text("…")` 字面量与目录键——**无缺失（无英文泄漏）**；删除下拉菜单下线后遗留的 11 个死键（FANS/PROFILES/TEMPERATURES/外部占用横幅等），新增 `Status`。
+  - 现为 **70 键 × 三语言**；繁体由 `scripts/update-traditional.swift` 生成（测试校验等于简→繁转换）。
+  - DoD：✅ 三语言键齐全；`LocalizationTests` 全过；打包校验通过。
 - [ ] **MB-4.2 测试补全**
   - 文件：`Tests/SmartFanTests/MenuBarLabelTests.swift` 等
   - DoD：度量、配置、数字排版、曲线渲染均有覆盖；Debug/Release 全绿。
 - [ ] **MB-4.3 文档**
   - 文件：`README.md`、`CHANGELOG.md`、新增 `docs/menu-bar-display-validation.md`
   - DoD：使用说明与验收记录齐全。
-- [ ] **MB-4.4 多机型/电池健壮性**
-  - 要点：无电池机型、无 `TB*` 键、多风扇机型的回退。
-  - DoD：缺失度量不显示为 `0`，而是隐藏或显示占位。
+- [x] **MB-4.4 多机型/电池健壮性**
+  - 完成：度量缺失一律返回 `nil`（**不为 0**）——无电池传感器机型体感温度为 `nil`；无风扇读数时转速为 `nil`；无传感器时均温为 `nil`。首选项读数显示 `—`，菜单栏数字直接省去（仅存图标）。
+  - 固定速率：硬件未上报 `maxRPM` 时不再钳到 0（会变成停转），改为原值透传（由守护进程纠底），滑块回退到 `1000...7000`。
+  - DoD：✅ 单测覆盖（空度量、nil 状态、无电池、仅平均可用）。
 
 ### 阶段 P5 —— 配置项 iCloud 自动同步（收费，**后续版本**）
 

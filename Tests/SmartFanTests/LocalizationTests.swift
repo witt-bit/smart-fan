@@ -43,8 +43,8 @@ struct LocalizationTests {
     @Test("Dynamic values are substituted once and remain literal")
     func formatting() {
         let catalog = LocalizationCatalog.bundled
-        #expect(catalog.text("{temperature}°{unit} instant", language: .traditionalChinese,
-                             arguments: ["temperature": "149", "unit": "F"]) == "149°F 即時觸發")
+        #expect(catalog.text("Fan {index}", language: .traditionalChinese,
+                             arguments: ["index": "149"]) == "風扇 149")
         #expect(catalog.text("SmartFan {version} is available. You have {appVersion}.",
                              language: .english, arguments: ["version": "{appVersion}", "appVersion": "0.2.3.6"])
                 == "SmartFan {appVersion} is available. You have 0.2.3.6.")

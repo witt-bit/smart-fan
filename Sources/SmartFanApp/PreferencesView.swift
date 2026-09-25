@@ -135,8 +135,21 @@ struct FansPreferences: View {
 
             Divider()
 
+            // Live state: the mode above is the user's choice; this is what the
+            // monitor is actually doing (a safety override or idle shows up here).
+            HStack(spacing: 6) {
+                Text(language.text("Status")).foregroundStyle(.secondary)
+                Spacer()
+                monitorStateLabel
+            }
+
+            Divider()
+
             if let status = appState.latestStatus {
-                LabeledValue(language.text("Fans"), value: fanSummary(status))
+                ForEach(status.fans, id: \.index) { fan in
+                    LabeledValue(language.text("Fan {index}", ["index": String(fan.index)]),
+                                 value: language.text("{rpm} RPM", ["rpm": String(fan.actualRPM)]))
+                }
                 LabeledValue(language.text("CPU"), value: temp(prefixes: ["TC", "Tp"], status: status))
                 LabeledValue(language.text("GPU"), value: temp(prefixes: ["TG", "Tg"], status: status))
                 LabeledValue(language.text("RAM"), value: temp(prefixes: ["TR", "Tm", "TM"], status: status))
@@ -179,9 +192,19 @@ struct FansPreferences: View {
         return Double(fan.minRPM)...Double(fan.maxRPM)
     }
 
-    private func fanSummary(_ status: ThermalStatus) -> String {
-        guard let rpm = status.fanRPM else { return "—" }
-        return "\(Int(rpm)) RPM"
+    @ViewBuilder
+    private var monitorStateLabel: some View {
+        switch appState.monitorState {
+        case .safetyOverride:
+            Label(language.text("SAFETY"), systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+        case .active(let name):
+            Label(language.text(name), systemImage: "fan.fill")
+                .foregroundStyle(.orange)
+        case .idle:
+            Label(language.text("Idle"), systemImage: "fan")
+                .foregroundStyle(.secondary)
+        }
     }
 
     private func temp(prefixes: [String], status: ThermalStatus) -> String {
