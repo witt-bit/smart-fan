@@ -345,6 +345,19 @@ AppDelegate
 
 见 §13。本阶段**不在本次范围**。
 
+### 阶段 P6 —— 低优先级增强（末尾）
+
+- [ ] **MB-6.1 菜单栏风扇图标随转速旋转**（低优先级）
+  - 要点：在 `NSStatusItem.button` 上挂一个 `CALayer`，用 `CABasicAnimation(transform.rotation.z)` 无限旋转；动画在 render server（GPU）执行，**App 自身 CPU ≈ 0**。
+  - **不要**用定时器换 `button.image`（每帧走 AppKit 绘制，与「极其轻量」冲突）。
+  - RPM→速度**必须压缩**：真实 6000 RPM = 100 转/秒（肉眼只是频闪）；建议 `rps = 0.2 + 1.3 × (rpm / maxRPM)`（满转 ≈1.5 转/秒）或对数映射。
+  - `rpm == 0`（或 < minRPM）时**不加动画**，保持静止。
+  - 失去模板染色：`CALayer.contents` 不随菜单栏明暗反色 → 预渲染黑/白（警告时红）两份，复用现有 `effectiveAppearance` KVO 替换 `contents`。
+  - 需要把 icon 从「icon + 文字合成图」中**拆出**：按钮上放自定义 `NSView`（`hitTest` 返回 nil 让点击穿透），自绘「旋转图层 + 文字图层」，不再用 `button.image`。
+  - **默认关闭**（首选项开关）；开启时菜单栏持续重组，需连同发布前性能专项（§11）一起测。
+  - 依赖：MB-2.1（`fanRPM`）、MB-2.3（渲染拆分）。
+  - DoD：转速变化时旋转速度跟随；0 转速静止；明暗/警告态颜色正确；关闭时无额外开销。
+
 ---
 
 ## 10. 已决问题汇总（Q1–Q11，均已定）
