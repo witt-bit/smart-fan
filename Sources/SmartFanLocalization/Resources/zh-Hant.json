@@ -11,7 +11,7 @@
   "Compact" : "簡潔",
   "Current Mode" : "當前模式",
   "Default" : "默認",
-  "Dual Curve" : "雙曲線疊加",
+  "Dual Curve" : "雙曲線",
   "Fan control unavailable" : "風扇控制不可用",
   "Fan speed" : "風扇轉速",
   "Fan {fan} is held at about {rpm} RPM. The app won't adjust fans until you take over." : "風扇 {fan} 固定在約 {rpm} RPM。在你接管之前，應用不會調整風扇。",

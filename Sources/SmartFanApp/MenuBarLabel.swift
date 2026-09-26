@@ -112,38 +112,61 @@ enum MenuBarLabelImage {
     /// Width of the sparkline canvas (plan §4 V2/V4).
     static let curveWidth: CGFloat = 40
 
-    /// One or two sparklines filling the menu bar height. Each curve is normalised
-    /// to its **own** min/max, so a temperature and an RPM curve can share one
-    /// canvas. Fewer than two points draws a flat mid line rather than nothing.
-    /// Coloured (never a template) because a template can only be black or white.
+    /// One or more sparklines filling the menu bar height.
+    ///
+    /// - **Vertical reference**: faint quarter lines, since the item has no room for
+    ///   axis labels but a normalised curve still needs something to read against.
+    /// - **Two curves get their own band** (temperature above, RPM below). They have
+    ///   different units, so a shared scale would be meaningless — and because the
+    ///   readings are strongly correlated, independently-normalised curves trace the
+    ///   same line and the upper one is drawn over entirely.
+    /// - Fewer than two points draws a flat mid line rather than nothing.
+    /// - Coloured (never a template): a template can only be black or white.
     static func makeCurve(curves: [(values: [Float], color: NSColor)],
                           needsWarning: Bool,
                           statusBarThickness: CGFloat = NSStatusBar.system.thickness) -> NSImage {
         let size = NSSize(width: curveWidth, height: max(statusBarThickness, 14))
         let inset: CGFloat = 1.5
         let image = NSImage(size: size, flipped: false) { _ in
-            for curve in curves {
-                // An alert is signalled by turning the whole item red, matching the
-                // icon's behaviour (there is no icon in the curve styles).
+            let x0 = inset, x1 = size.width - inset
+            let y0 = inset, usable = size.height - 2 * inset
+
+            // Scale reference: nothing to label in 22pt, so faint quarter lines.
+            let guides = NSBezierPath()
+            guides.lineWidth = 0.5
+            for fraction in [0.25, 0.5, 0.75] as [CGFloat] {
+                let y = y0 + usable * fraction
+                guides.move(to: NSPoint(x: 0, y: y))
+                guides.line(to: NSPoint(x: size.width, y: y))
+            }
+            NSColor.gray.withAlphaComponent(0.30).setStroke()
+            guides.stroke()
+
+            for (index, curve) in curves.enumerated() {
+                // An alert is signalled by turning the item red, matching the icon.
                 let color = needsWarning ? NSColor.systemRed : curve.color
+                // One curve uses the whole canvas; two split it into bands.
+                let lower: CGFloat = curves.count > 1 && index == 1 ? 0 : (curves.count > 1 ? 0.5 : 0)
+                let upper: CGFloat = curves.count > 1 && index == 1 ? 0.5 : 1
+
                 let path = NSBezierPath()
                 path.lineWidth = 1.5
                 path.lineJoinStyle = .round
                 path.lineCapStyle = .round
                 let values = curve.values.filter { $0.isFinite }
-                let x0 = inset, x1 = size.width - inset
-                let y0 = inset, usable = size.height - 2 * inset
+                func y(_ norm: CGFloat) -> CGFloat { y0 + usable * (lower + (upper - lower) * norm) }
                 if values.count < 2 {
-                    path.move(to: NSPoint(x: x0, y: size.height / 2))
-                    path.line(to: NSPoint(x: x1, y: size.height / 2))
+                    let mid = y(0.5)
+                    path.move(to: NSPoint(x: x0, y: mid))
+                    path.line(to: NSPoint(x: x1, y: mid))
                 } else {
                     let low = values.min() ?? 0
                     let span = (values.max() ?? 0) - low
-                    for (index, value) in values.enumerated() {
-                        let x = x0 + (x1 - x0) * CGFloat(index) / CGFloat(values.count - 1)
+                    for (i, value) in values.enumerated() {
+                        let x = x0 + (x1 - x0) * CGFloat(i) / CGFloat(values.count - 1)
                         let norm = span > 0 ? CGFloat((value - low) / span) : 0.5
-                        let point = NSPoint(x: x, y: y0 + usable * norm)
-                        if index == 0 { path.move(to: point) } else { path.line(to: point) }
+                        let point = NSPoint(x: x, y: y(norm))
+                        if i == 0 { path.move(to: point) } else { path.line(to: point) }
                     }
                 }
                 color.setStroke()

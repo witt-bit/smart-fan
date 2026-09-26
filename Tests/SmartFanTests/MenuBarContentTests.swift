@@ -116,6 +116,79 @@ struct MenuBarContentTests {
         #expect(MenuBarContent.readings(config, status: noBattery, fahrenheit: false).temperature == "48°")
     }
 
+    @Test("Dual curves keep two distinct colours when rendered")
+    func dualCurveColours() throws {
+        let image = MenuBarLabelImage.makeCurve(
+            curves: [(values: [10, 20, 30, 20, 10], color: MenuBarContent.temperatureCurveColor),
+                     (values: [3000, 500, 3000, 500, 3000], color: MenuBarContent.rpmCurveColor)],
+            needsWarning: false, statusBarThickness: 22)
+        let scale = 2
+        let bitmap = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: Int(image.size.width) * scale,
+            pixelsHigh: Int(image.size.height) * scale, bitsPerSample: 8,
+            samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        bitmap.size = image.size
+        let context = try #require(NSGraphicsContext(bitmapImageRep: bitmap))
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        NSGraphicsContext.current = context
+        image.draw(in: NSRect(origin: .zero, size: image.size))
+        context.flushGraphics()
+
+        var orange = 0, teal = 0, other = 0
+        for y in 0..<bitmap.pixelsHigh {
+            for x in 0..<bitmap.pixelsWide {
+                guard let c = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+                      c.alphaComponent > 0.5 else { continue }
+                let r = c.redComponent, g = c.greenComponent, b = c.blueComponent
+                if r > 0.7 && g > 0.25 && g < 0.85 && b < 0.4 { orange += 1 }
+                else if b > 0.45 && g > 0.35 && r < 0.45 { teal += 1 }
+                else { other += 1 }
+            }
+        }
+        // Both hues must be present — a single tint would mean only one is drawn.
+        #expect(orange > 5, "orange pixels: \(orange)")
+        #expect(teal > 5, "teal pixels: \(teal)")
+        _ = other
+    }
+
+    @Test("Dual curves stay distinguishable when they trace the same path")
+    func dualCurveCorrelated() throws {
+        // Real data is strongly correlated: the profile raises RPM with temperature, so
+        // independently-normalised curves trace nearly the same line.
+        let image = MenuBarLabelImage.makeCurve(
+            curves: [(values: [10, 20, 30, 40, 50], color: MenuBarContent.temperatureCurveColor),
+                     (values: [1000, 2000, 3000, 4000, 5000], color: MenuBarContent.rpmCurveColor)],
+            needsWarning: false, statusBarThickness: 22)
+        let scale = 2
+        let bitmap = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: Int(image.size.width) * scale,
+            pixelsHigh: Int(image.size.height) * scale, bitsPerSample: 8,
+            samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        bitmap.size = image.size
+        let context = try #require(NSGraphicsContext(bitmapImageRep: bitmap))
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        NSGraphicsContext.current = context
+        image.draw(in: NSRect(origin: .zero, size: image.size))
+        context.flushGraphics()
+
+        var orange = 0, teal = 0
+        for y in 0..<bitmap.pixelsHigh {
+            for x in 0..<bitmap.pixelsWide {
+                guard let c = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+                      c.alphaComponent > 0.5 else { continue }
+                let r = c.redComponent, g = c.greenComponent, b = c.blueComponent
+                if r > 0.7 && g > 0.25 && g < 0.85 && b < 0.4 { orange += 1 }
+                else if b > 0.45 && g > 0.35 && r < 0.45 { teal += 1 }
+            }
+        }
+        #expect(orange > 5, "orange pixels: \(orange) — the lower curve is hidden")
+        #expect(teal > 5, "teal pixels: \(teal)")
+    }
+
     // MARK: - Curves
 
     private func history(_ temps: [Float?], _ rpms: [Float?]) -> MenuBarHistory {
