@@ -65,6 +65,28 @@ struct MenuBarDisplayConfigTests {
         }
     }
 
+    @Test("The temperature metric is live only when a temperature is shown")
+    func temperatureMetricApplies() {
+        // Numbers: follows the temperature toggle.
+        #expect(MenuBarDisplayConfig(style: .numbers, showTemperature: true).temperatureMetricApplies)
+        #expect(!MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: true).temperatureMetricApplies)
+        #expect(!MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: false).temperatureMetricApplies)
+        // Curves: only the ones that draw a temperature.
+        #expect(MenuBarDisplayConfig(style: .temperatureCurve).temperatureMetricApplies)
+        #expect(MenuBarDisplayConfig(style: .dualCurve).temperatureMetricApplies)
+        #expect(!MenuBarDisplayConfig(style: .rpmCurve).temperatureMetricApplies)
+    }
+
+    @Test("The unit suffix is live only when a number is drawn")
+    func unitDisplayApplies() {
+        #expect(MenuBarDisplayConfig(style: .numbers, showTemperature: true).unitDisplayApplies)
+        #expect(MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: true).unitDisplayApplies)
+        #expect(!MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: false).unitDisplayApplies)
+        for style in [MenuBarStyle.temperatureCurve, .rpmCurve, .dualCurve] {
+            #expect(!MenuBarDisplayConfig(style: style).unitDisplayApplies)
+        }
+    }
+
     @Test("Both numbers may be off (an icon-only item is a valid choice)")
     func bothNumbersMayBeOff() {
         let off = MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: false)

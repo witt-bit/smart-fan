@@ -78,6 +78,24 @@ public struct MenuBarDisplayConfig: Codable, Equatable, Sendable {
     public static let sampleIntervals: [TimeInterval] = [1, 2, 3, 5, 10]
     public static let windows: [TimeInterval] = [10, 30, 60, 180]
 
+    /// True when the temperature metric actually affects what is shown: the numbers
+    /// style with the temperature on, or a style that draws the temperature curve.
+    /// The preferences disable the metric picker when this is false, so a control
+    /// that cannot change anything is not left live.
+    public var temperatureMetricApplies: Bool {
+        switch style {
+        case .numbers: return showTemperature
+        case .temperatureCurve, .dualCurve: return true
+        case .rpmCurve: return false
+        }
+    }
+
+    /// True when the unit suffix actually appears: the numbers style with at least
+    /// one number shown. Curve styles draw no text, so the unit is inert there.
+    public var unitDisplayApplies: Bool {
+        style == .numbers && (showTemperature || showRPM)
+    }
+
     /// Clamp out-of-range values back to the allowed set. Applied to decoded input
     /// so a hand-edited plist can't put the renderer into a 0-second or 1-point state.
     /// Both numbers may be off — an icon-only item is a valid choice.

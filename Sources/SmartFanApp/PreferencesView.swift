@@ -287,11 +287,13 @@ struct MenuBarPreferences: View {
                 Toggle(language.text("Show RPM"), isOn: config.showRPM)
             }
 
-            // The metric applies to the numbers and to the temperature curve.
+            // The metric applies to the numbers and to the temperature curve, so it is
+            // live only when a temperature is actually shown.
             PickerRow(language.text("Temperature Metric"), selection: config.temperatureMetric) {
                 Text(language.text("Average")).tag(TemperatureMetric.average)
                 Text(language.text("Feels-like")).tag(TemperatureMetric.feelsLike)
             }
+            .disabled(!appState.displayConfig.temperatureMetricApplies)
 
             Divider()
             PickerRow(language.text("Units"), selection: config.unitDisplay) {
@@ -299,6 +301,7 @@ struct MenuBarPreferences: View {
                 Text(language.text("Compact")).tag(UnitDisplay.compact)
                 Text(language.text("Full")).tag(UnitDisplay.full)
             }
+            .disabled(!appState.displayConfig.unitDisplayApplies)
 
             // Curve sampling settings only matter for the curve styles.
             if appState.displayConfig.style != .numbers {
