@@ -44,14 +44,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        // Reset fans on quit so the daemon doesn't hold stale APP settings — but
-        // ONLY if the app owns the hold. A CLI hold (`sudo smart-fan max`) is the
-        // user's deliberate, unsupervised choice; quitting the menu bar app must not
-        // destroy it. Synchronous on purpose: the process is exiting, so an async
-        // write would be dropped; both calls are bounded by the sendRaw timeout.
+        // Give the daemon back the APP's hold on quit, so a stale app setting is not
+        // left behind. `releaseAppHold` asks the daemon to release only when the hold is
+        // still the app's, so a CLI hold (`sudo smart-fan max`) set later survives — that
+        // is the arbitration feature. Synchronous on purpose: the process is exiting, so
+        // an async write would be dropped; the call is bounded by the sendRaw timeout.
         let client = DaemonClient()
         if let state = try? client.readState(), state.owner == "app" {
-            _ = try? client.execute(.resetAuto)
+            _ = try? client.execute(.releaseAppHold)
         }
         // owner == "cli" → leave the CLI hold alone; owner == "none" → nothing to reset.
     }

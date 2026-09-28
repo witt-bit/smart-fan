@@ -135,9 +135,11 @@ public struct DaemonHoldState: Codable, Equatable {
 public struct FanApplyResult: Equatable {
     public let note: String?
     public let appliedRPM: Int?
-    public init(note: String?, appliedRPM: Int?) {
+    public let appliedFanRPMs: [FanRPM]?
+    public init(note: String?, appliedRPM: Int?, appliedFanRPMs: [FanRPM]? = nil) {
         self.note = note
         self.appliedRPM = appliedRPM
+        self.appliedFanRPMs = appliedFanRPMs
     }
 }
 
@@ -169,7 +171,8 @@ public final class DaemonClient {
             )
         }
         // Note + applied RPM ride back on an OK response (e.g. a clamp).
-        return FanApplyResult(note: response.note, appliedRPM: response.appliedRPM)
+        return FanApplyResult(note: response.note, appliedRPM: response.appliedRPM,
+                              appliedFanRPMs: response.appliedFanRPMs)
     }
 
     /// Send one typed request and return the typed response — length-prefixed JSON
@@ -257,8 +260,9 @@ private enum HoldState {
 // MARK: - Daemon Server
 
 public final class DaemonServer {
-    private let socketFD: Int32
+    private let socketFD: Int32?
     private let fanControl: FanControl
+    private let now: () -> Date
     /// uid of the controlling user (who ran `sudo smart-fan install`). The
     /// socket is chown'd to this uid + 0600, so only that user (and root) connect.
     private let ownerUID: uid_t
@@ -269,6 +273,10 @@ public final class DaemonServer {
     private var hold: HoldState = .none
     /// True while the thermal floor is overriding a hold to max. Guarded by stateLock.
     private var safetySuspended = false
+    /// True after a failed write could not be undone: fans may be left manual (or
+    /// Ftst set) with no hold recorded. The watchdog loop retries the reset.
+    /// Guarded by stateLock.
+    private var releasePending = false
     private let stateLock = NSLock()
 
     /// Per-fan [min, max] RPM, cached at init (fixed hardware constants) for clamping
@@ -287,17 +295,29 @@ public final class DaemonServer {
     /// Phase 4 connection layer (concurrent bounded accept + framed I/O), created in run().
     private var connectionServer: ConnectionServer?
 
-    public init(fanControl: FanControl, ownerUID: uid_t,
-                sampleMaxTemp: (() -> Float?)? = nil) throws {
+    public convenience init(fanControl: FanControl, ownerUID: uid_t,
+                            sampleMaxTemp: (() -> Float?)? = nil) throws {
+        self.init(fanControl: fanControl, ownerUID: ownerUID, sampleMaxTemp: sampleMaxTemp,
+                  socketFD: try Self.openSocket(ownerUID: ownerUID), now: Date.init)
+    }
+
+    /// The same dispatcher and control loops can run against a simulated SMC without
+    /// binding the installed daemon's socket, starting timers, or requiring root.
+    init(fanControl: FanControl, ownerUID: uid_t, sampleMaxTemp: (() -> Float?)?,
+         socketFD: Int32?, now: @escaping () -> Date) {
         self.fanControl = fanControl
         self.ownerUID = ownerUID
+        self.socketFD = socketFD
+        self.now = now
         // Cache fan RPM limits once (fixed hardware constants). Empty on a read failure
         // → clamp becomes a no-op and FanControl's own range check stays the backstop.
         self.fanLimits = (try? fanControl.status())?.fans
             .map { (Float($0.minRPM), Float($0.maxRPM)) } ?? []
-        self.rateLimiter = RateLimiter(now: Date())
+        self.rateLimiter = RateLimiter(now: now())
         self.injectedSampler = sampleMaxTemp
+    }
 
+    private static func openSocket(ownerUID: uid_t) throws -> Int32 {
         // Refuse to start with an unusable owner. uid 0 would make the socket
         // root-only and silently lock every non-root account (the user's app/CLI)
         // out of fan control. Fail loudly under KeepAlive so Console.app shows why,
@@ -312,7 +332,6 @@ public final class DaemonServer {
         guard fd >= 0 else {
             throw SmartFanError.smcConnectionFailed
         }
-        self.socketFD = fd
 
         // Remove stale socket (safe now: only root can have created anything in
         // root-owned /var/run — no unprivileged squatter to preserve).
@@ -366,10 +385,12 @@ public final class DaemonServer {
             close(fd)
             throw SmartFanError.writeFailed("listen() failed")
         }
+        return fd
     }
 
     /// Run the server loop (blocks forever)
     public func run() {
+        guard let socketFD else { preconditionFailure("DaemonServer.run requires a bound socket") }
         NSLog("SmartFan daemon: listening on %@", SmartFanDaemon.socketPath)
         // Start log maintenance even when no fan command has been issued.
         TFLogger.shared.daemon("Listening on \(SmartFanDaemon.socketPath)")
@@ -403,63 +424,35 @@ public final class DaemonServer {
         DispatchQueue.global(qos: .utility).async { [self] in
             while true {
                 Thread.sleep(forTimeInterval: 5)
-
-                stateLock.lock()
-                let current = hold
-                stateLock.unlock()
-
-                // ONLY a supervised hold is reverted — that's the app's crash
-                // protection: the app set fans manually and stopped checking in,
-                // so hand control back to macOS. An unsupervised CLI hold is
-                // never touched here (the user asked for it; it persists until
-                // CLI `auto` or the menu bar Default clears it). This is the
-                // v0.1.5 fix: the app's heartbeat can no longer drag a CLI hold
-                // into the supervised branch.
-                guard case .supervised(_, let lastBeat) = current,
-                      Date().timeIntervalSince(lastBeat) > 15 else { continue }
-
-                // If the thermal floor is holding fans at max (overheating), do NOT
-                // resetAuto — dropping fans while hot is the unsafe move. The app is
-                // gone, so clear the dead hold (it must not be restored on cooldown);
-                // fans stay at max, and the floor's cooldown path resets to auto once
-                // it's safe. Crash protection preserved, its auto-reset deferred.
-                stateLock.lock()
-                let suspended = safetySuspended
-                stateLock.unlock()
-                if suspended {
-                    stateLock.lock()
-                    if case .supervised(_, let beat) = hold, beat == lastBeat { hold = .none }
-                    stateLock.unlock()
-                    NSLog("SmartFan daemon: supervised hold timed out during thermal suspension — cleared; fans stay at max until cooldown")
-                    continue
-                }
-
-                // Only the revert path allocates anything autoreleasable (NSLog +
-                // error interpolation), and it never returns from this loop, so pool
-                // it. The sleep/guard/continue stay outside — a steady tick allocates
-                // nothing autoreleasable (Date is a value type).
-                autoreleasepool {
-                    NSLog("SmartFan daemon: heartbeat timeout — resetting fans to auto")
-                    smcLock.lock()
-                    let resetSucceeded: Bool
-                    do {
-                        try fanControl.resetAuto()
-                        resetSucceeded = true
-                    } catch {
-                        NSLog("SmartFan daemon: watchdog reset failed: %@, will retry", "\(error)")
-                        resetSucceeded = false
-                    }
-                    smcLock.unlock()
-
-                    // Clear only if the reset worked AND the same supervised hold is
-                    // still current — a new command may have arrived meanwhile.
-                    if resetSucceeded {
-                        stateLock.lock()
-                        if case .supervised(_, let beat) = hold, beat == lastBeat { hold = .none }
-                        stateLock.unlock()
-                    }
-                }
+                autoreleasepool { watchdogTick() }
             }
+        }
+    }
+
+    /// Decide expiry and thermal suspension together, after obtaining smcLock.
+    /// Heartbeats can still run during hardware I/O, but cannot renew a cleared hold.
+    func watchdogTick() {
+        retryPendingRelease()
+        smcLock.lock()
+        defer { smcLock.unlock() }
+        stateLock.lock()
+        guard case .supervised(_, let beat) = hold,
+              now().timeIntervalSince(beat) > 15 else { stateLock.unlock(); return }
+        let suspended = safetySuspended
+        hold = .none
+        stateLock.unlock()
+
+        if suspended {
+            NSLog("SmartFan daemon: supervised hold expired — keeping thermal max until cooldown")
+            return
+        }
+        do {
+            try fanControl.resetAuto()
+        } catch {
+            // A partial reset invalidates the old hardware state, too. Retain a
+            // recovery obligation, not a manual hold that heartbeats could keep alive.
+            stateLock.lock(); releasePending = true; stateLock.unlock()
+            NSLog("SmartFan daemon: watchdog reset failed: %@, will retry", "\(error)")
         }
     }
 
@@ -469,7 +462,7 @@ public final class DaemonServer {
     /// this — reset must never be denied.
     private func allowWrite() -> Bool {
         rateLock.lock(); defer { rateLock.unlock() }
-        return rateLimiter.allow(now: Date())
+        return rateLimiter.allow(now: now())
     }
 
     /// True while the thermal floor is overriding fans to max.
@@ -547,7 +540,7 @@ public final class DaemonServer {
         return peak > 0 ? peak : nil
     }
 
-    private func thermalTick() {
+    func thermalTick() {
         // Read hold/suspension FIRST, and skip the SMC sweep entirely when there is no
         // hold and we aren't already overriding. Rationale (we will be asked): the floor
         // protects a HOLD. No hold means fans are on Apple's auto curve — macOS is
@@ -573,28 +566,52 @@ public final class DaemonServer {
         case .engage:
             // Override the below-max hold to max. Direct SMC write — NEVER recordHold,
             // so the user's command + lastBeat are preserved for restore.
+            // Mark the suspension in the same smcLock section as the write, so a
+            // command can't slip in between, see no suspension and lower the fans.
             smcLock.lock()
+            stateLock.lock()
+            let needsMax = thermalFloor.evaluate(temp: temp, holdCommand: hold.command,
+                                                 suspended: safetySuspended) == .engage
+            stateLock.unlock()
+            guard needsMax else { smcLock.unlock(); return }
             let ok = (try? fanControl.setMax()) != nil
+            if ok { stateLock.lock(); safetySuspended = true; stateLock.unlock() }
             smcLock.unlock()
             guard ok else { return }
-            stateLock.lock(); safetySuspended = true; stateLock.unlock()
             NSLog("SmartFan daemon: thermal floor engaged at %.1f°C — fans held at max (was %@)",
                   temp, heldCommand ?? "none")
 
         case .restore:
-            // Re-read the hold at restore time — the watchdog may have cleared a dead
-            // app's hold during the suspension, in which case go to auto instead.
+            // Re-read the hold at restore time, under smcLock — the watchdog may have
+            // cleared a dead app's hold during the suspension (then go to auto), and an
+            // `auto` may have ended the suspension since this tick sampled it (then
+            // there is nothing to restore; replaying the old command would re-pin fans
+            // with no hold). Commands need smcLock, so the hold can't change until the
+            // restore write and the state update below are done.
+            smcLock.lock()
             stateLock.lock()
+            let stillSuspended = safetySuspended
             let restoreCommand = hold.command
             stateLock.unlock()
-            smcLock.lock()
+            guard stillSuspended else { smcLock.unlock(); return }
+            let ok: Bool
             if let cmd = restoreCommand {
-                try? applyCommandString(cmd)
+                ok = (try? applyCommandString(cmd)) != nil
             } else {
-                try? fanControl.resetAuto()
+                ok = (try? fanControl.resetAuto()) != nil
+            }
+            if ok {
+                stateLock.lock(); safetySuspended = false; stateLock.unlock()
+            } else if (try? fanControl.setMax()) == nil {
+                // Restore can lower only one fan before failing. Re-establish max
+                // before retaining the suspension, or fall back to tracked release.
+                releaseAfterFailedWrite(.max)
             }
             smcLock.unlock()
-            stateLock.lock(); safetySuspended = false; stateLock.unlock()
+            guard ok else {
+                NSLog("SmartFan daemon: thermal floor restore failed at %.1f°C — will retry", temp)
+                return
+            }
             NSLog("SmartFan daemon: thermal floor cleared at %.1f°C — %@",
                   temp, restoreCommand.map { "restored \($0)" } ?? "reset to auto")
         }
@@ -655,11 +672,24 @@ public final class DaemonServer {
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2.0) { [self] in
             smcLock.lock()
             defer { smcLock.unlock() }
+            // Re-check under smcLock: during the delay an `auto` or a watchdog reset may
+            // have cleared the hold, a new command may have replaced it, or the thermal
+            // floor may be holding max. Replaying the stale command would re-pin fans
+            // with no hold recorded, outside the watchdog's and the floor's reach.
+            stateLock.lock()
+            let current = hold.command
+            let suspended = safetySuspended
+            stateLock.unlock()
+            guard current == command, !suspended else {
+                NSLog("SmartFan daemon: wake re-apply skipped — hold changed during the delay")
+                return
+            }
             do {
                 try applyCommandString(command)
                 NSLog("SmartFan daemon: re-applied after wake")
             } catch {
                 NSLog("SmartFan daemon: wake re-apply failed: %@", "\(error)")
+                releaseAfterFailedWrite(.max)
             }
         }
     }
@@ -669,7 +699,7 @@ public final class DaemonServer {
     /// Decode a request body → response: the framing/version/log wrapper around the
     /// atomic process(). smcLock is taken ONLY for the process() call — never around
     /// the I/O, so a slow-reading client can no longer hold it during the write.
-    private func processFrame(_ body: Data) -> DaemonResponse {
+    func processFrame(_ body: Data) -> DaemonResponse {
         guard let request = try? DaemonProtocol.decode(DaemonRequest.self, from: body) else {
             // Undecodable = unknown verb or a shape from a newer client.
             return .unsupported(daemonVersion: SmartFanVersion.current)
@@ -708,9 +738,10 @@ public final class DaemonServer {
             // re-apply (handleWake) and the `state` snapshot are unchanged.
             func recordHold(_ heldCommand: String) {
                 stateLock.lock()
+                releasePending = false
                 hold = oneshot
                     ? .unsupervised(command: heldCommand)
-                    : .supervised(command: heldCommand, lastBeat: Date())
+                    : .supervised(command: heldCommand, lastBeat: now())
                 stateLock.unlock()
             }
 
@@ -735,16 +766,27 @@ public final class DaemonServer {
             case .max:
                 if !allowWrite() { response = rateLimited; break }
                 if blockedByCLIHold() { response = .failure(.heldByCLI, "held by cli"); break }
+                try finishPendingRelease()
                 // Skip the SMC write while the thermal floor holds fans at max — record
                 // the new hold to restore on cooldown, but don't drop fans while hot.
                 if !isSuspended() { try fanControl.setMax() }
                 recordHold("max")
                 response = .ok()
-            case .auto:
+            case .auto, .autoIfApp:
+                // Background cooldown/retry is conditional at the write boundary.
+                // A CLI hold arriving after an app poll always wins. Explicit auto
+                // (Default / CLI auto) still releases any owner.
+                if request.verb == .autoIfApp {
+                    stateLock.lock()
+                    let cliOwned: Bool
+                    if case .unsupervised = hold { cliOwned = true } else { cliOwned = false }
+                    stateLock.unlock()
+                    if cliOwned { response = .failure(.heldByCLI, "held by cli"); break }
+                }
                 // Exempt from the rate cap. Also the "hand back to Apple's auto curve"
                 // path, so it clears any thermal suspension — Apple's auto handles heat.
                 try fanControl.resetAuto()
-                stateLock.lock(); hold = .none; safetySuspended = false; stateLock.unlock()
+                stateLock.lock(); hold = .none; safetySuspended = false; releasePending = false; stateLock.unlock()
                 response = .ok()
             case .set:
                 guard let rpm = request.rpm else {
@@ -754,10 +796,25 @@ public final class DaemonServer {
                 try FanControl.validateRPM(Float(rpm))
                 if !allowWrite() { response = rateLimited; break }
                 if blockedByCLIHold() { response = .failure(.heldByCLI, "held by cli"); break }
-                let (clamped, note) = clampRPM(Float(rpm), fan: 0)
-                if !isSuspended() { try fanControl.setAllFans(rpm: clamped) }
-                recordHold("set \(Int(clamped))")
-                response = .ok(note: note, appliedRPM: Int(clamped))
+                try finishPendingRelease()
+                let suspended = isSuspended()
+                let targets: [FanRPM]
+                if suspended {
+                    targets = try fanControl.allFanTargets(rpm: Float(rpm))
+                        .map { FanRPM(index: $0.index, rpm: Int($0.rpm)) }
+                } else {
+                    targets = try fanControl.setAllFans(rpm: Float(rpm))
+                }
+                recordHold("set \(rpm)")
+                var notes = targets.filter { $0.rpm != rpm }
+                    .map { "Fan \($0.index): clamped \(rpm) → \($0.rpm) RPM" }
+                if suspended { notes.append("Thermal safety override active; targets queued until cooldown") }
+                // A scalar is valid only if every fan has the same target. Older
+                // clients then report unknown for a heterogeneous result.
+                let common = targets.first?.rpm
+                response = .ok(note: notes.isEmpty ? nil : notes.joined(separator: "; "),
+                               appliedRPM: targets.allSatisfy { $0.rpm == common } ? common : nil,
+                               appliedFanRPMs: targets)
             case .setfan:
                 guard let index = request.fan, let rpm = request.rpm else {
                     response = .failure(.usage, "usage: setfan <index> <rpm>")
@@ -769,10 +826,12 @@ public final class DaemonServer {
                 try FanControl.validateRPM(Float(rpm))
                 if !allowWrite() { response = rateLimited; break }
                 if blockedByCLIHold() { response = .failure(.heldByCLI, "held by cli"); break }
+                try finishPendingRelease()
                 let (clamped, note) = clampRPM(Float(rpm), fan: index)
                 if !isSuspended() { try fanControl.setSpeed(fan: index, rpm: clamped) }
                 recordHold("setfan \(index) \(Int(clamped))")
-                response = .ok(note: note, appliedRPM: Int(clamped))
+                response = .ok(note: note, appliedRPM: Int(clamped),
+                               appliedFanRPMs: [FanRPM(index: index, rpm: Int(clamped))])
             case .status:
                 // Same snake_case shape as the standalone CLI `status`, carried as an
                 // opaque payload string (no consumer decodes it today).
@@ -794,7 +853,7 @@ public final class DaemonServer {
                 // convert a CLI hold into a supervised one (the v0.1.5 bug).
                 stateLock.lock()
                 if case .supervised(let c, _) = hold {
-                    hold = .supervised(command: c, lastBeat: Date())
+                    hold = .supervised(command: c, lastBeat: now())
                 }
                 stateLock.unlock()
                 response = .ok()
@@ -805,21 +864,59 @@ public final class DaemonServer {
             }
         } catch let error as SmartFanError {
             switch error {
-            case .invalidFanIndex, .invalidRPM:
+            case .invalidFanIndex, .invalidRPM, .rpmOutOfRange:
                 response = .failure(.usage, "\(error)")
             default:
                 response = .failure(.internal, "\(error)")
+                releaseAfterFailedWrite(request.verb)
             }
         } catch {
             response = .failure(.internal, "\(error)")
+            releaseAfterFailedWrite(request.verb)
         }
 
         return response
     }
 
+    /// Any partial hardware write invalidates the previous hold, including "max".
+    /// Release to macOS and retain the obligation until release succeeds. Never let
+    /// an old max label hide a partly lowered fan from the thermal floor.
+    private func releaseAfterFailedWrite(_ verb: DaemonRequest.Verb) {
+        switch verb {
+        case .max, .set, .setfan, .auto, .autoIfApp: break
+        default: return
+        }
+        stateLock.lock()
+        hold = .none
+        safetySuspended = false
+        releasePending = true
+        stateLock.unlock()
+        let released = (try? fanControl.resetAuto()) != nil
+        stateLock.lock(); releasePending = !released; stateLock.unlock()
+        NSLog("SmartFan daemon: fan write failed — %@", released ? "reset to auto" : "reset failed, will retry")
+    }
+
+    /// Called with smcLock held before accepting another manual command, so a
+    /// single-fan write cannot cancel recovery while another fan remains dirty.
+    private func finishPendingRelease() throws {
+        stateLock.lock(); let pending = releasePending; stateLock.unlock()
+        guard pending else { return }
+        try fanControl.resetAuto()
+        stateLock.lock(); releasePending = false; stateLock.unlock()
+    }
+
+    private func retryPendingRelease() {
+        smcLock.lock()
+        defer { smcLock.unlock() }
+        do { try finishPendingRelease() }
+        catch { NSLog("SmartFan daemon: pending reset failed, will retry") }
+    }
+
     deinit {
-        close(socketFD)
-        unlink(SmartFanDaemon.socketPath)
+        if let socketFD {
+            close(socketFD)
+            unlink(SmartFanDaemon.socketPath)
+        }
     }
 }
 

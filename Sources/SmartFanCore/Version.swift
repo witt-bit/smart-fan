@@ -9,9 +9,13 @@
 //
 
 public enum SmartFanVersion {
-    /// Upstream ThermalForge base this fork last integrated. Change it only after
-    /// integrating the corresponding upstream release. Independent of the
-    /// SmartFan release number below.
+    /// Upstream ThermalForge base this fork and MacFanPro share. Change it only after
+    /// integrating a new upstream release.
+    ///
+    /// The MacFanPro 0.2.3.x maintenance line is integrated up to **0.2.3.23**:
+    /// calibration written as the invoking user (and reading CPU+GPU peak), per-fan
+    /// range clamping, profile-switch ordering, write-failure recovery, and the
+    /// `auto-if-app` conditional release verb.
     public static let upstream = "0.2.3"
 
     /// SmartFan's own release version, independent of the upstream base above.

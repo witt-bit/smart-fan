@@ -78,6 +78,9 @@ final class AppState: ObservableObject {
     private var heartbeatTimer: DispatchSourceTimer?
     /// Consecutive failed heartbeats, for debouncing `daemonUnreachable`.
     private var heartbeatFailures = 0
+    /// Keeps the previous profile's late writes, and a superseded Default result,
+    /// from landing after a profile switch.
+    private var profileSwitch = ProfileSwitchGate()
 
     /// Runs the 5s heartbeat/version/state polls OFF the main thread so a slow
     /// or hung daemon can never stall the UI run loop (the v0.1.7 freeze).
@@ -163,22 +166,25 @@ final class AppState: ObservableObject {
                 // the live app now, so take over by clearing it (the crash
                 // recovery the old blind reset provided).
                 adopted = nil
-                try? executor.execute(.resetAuto)
-                TFLogger.shared.info("App launched — cleared stale app hold")
+                do {
+                    try executor.execute(.releaseAppHold)
+                    TFLogger.shared.info("App launched — cleared stale app hold")
+                } catch {
+                    TFLogger.shared.error("App launch release failed: \(error)")
+                }
             } else if state != nil {
                 adopted = nil
                 TFLogger.shared.info("App launched — no active hold")
             } else {
-                // State unreadable — a pre-0.1.7 daemon with no `state` verb
-                // (upgrade window) or unreachable. DELIBERATE fallback to the old
-                // conservative reset: without arbitration we can't tell a CLI hold
-                // from a crashed prior instance's stale hold, and leaving fans
-                // possibly stuck is worse than clearing a possible CLI hold.
-                // Bounded to the pre-0.1.7 daemon window, where the version-
-                // mismatch banner already tells the user to re-sync.
+                // A transient read failure must not bypass daemon ownership checks.
+                // Older daemons reject this verb; the mismatch banner requests sync.
                 adopted = nil
-                try? executor.execute(.resetAuto)
-                TFLogger.shared.info("App launched — daemon state unreadable; reset to auto (degraded)")
+                do {
+                    try executor.execute(.releaseAppHold)
+                    TFLogger.shared.info("App launched — conditional release completed after state read failure")
+                } catch {
+                    TFLogger.shared.error("App launch state/release unavailable: \(error)")
+                }
             }
 
             Task { @MainActor [weak self] in
@@ -401,18 +407,14 @@ final class AppState: ObservableObject {
                 self.recordMenuBarSample(status)
             }
         }
-        monitor.onFanCommand = { [weak self] command in
+        monitor.onFanCommandAsync = { [weak self] command, complete in
             Task { @MainActor [weak self] in
-                guard let self else { return }
-                // Don't fight a CLI hold — the user set it deliberately. Decide on
-                // the main actor where externalHold lives; the monitor resumes
-                // control when they pick a profile or press Default.
-                guard self.externalHold == nil else { return }
-                // Hand off to the coalescing pump; the blocking socket write happens
-                // OFF the main thread. During a ramp these fire up to ~10x/sec;
-                // previously each ran a blocking round-trip on the main actor and
-                // starved the run loop (v0.1.7).
-                self.commandPump.submit(command)
+                guard let self, self.externalHold == nil,
+                      self.profileSwitch.allows(command) else { complete(false); return }
+                // A cooldown or retry has no authority over a CLI hold. The daemon
+                // checks that at execution time; the five-second UI poll is advisory.
+                let routed: FanCommand = command == .resetAuto ? .releaseAppHold : command
+                self.commandPump.submit(routed, onComplete: complete)
             }
         }
         monitor.start()
@@ -448,6 +450,7 @@ final class AppState: ObservableObject {
     func setSmart() {
         guard servicesEnabled else { return }
         let took = seizeControl()
+        _ = profileSwitch.picked(handsOff: false)
         activeProfile = .smart
         persistSelectedProfile(FanProfile.smart.id)
         monitor?.switchProfile(.smart)
@@ -469,9 +472,16 @@ final class AppState: ObservableObject {
         // Send the reset off-main and reflect Silent ONLY once the daemon confirms;
         // on failure, leave the current profile active (so the monitor keeps trying)
         // and log it, rather than a false "Silent, handled" over a dead daemon.
+        // Until then, hold back the old profile's writes so none lands after the reset.
+        let press = profileSwitch.defaultPressed()
         commandPump.submit(.resetAuto) { [weak self] ok in
             Task { @MainActor in
                 guard let self else { return }
+                // A profile picked (or Default pressed again) meanwhile is newer intent.
+                guard self.profileSwitch.resetFinished(press, ok: ok) else {
+                    TFLogger.shared.info("Reset to Default finished after a newer choice — not applied")
+                    return
+                }
                 guard ok else {
                     TFLogger.shared.error("Reset to Default failed — daemon unreachable; fans NOT reset")
                     return
@@ -480,7 +490,7 @@ final class AppState: ObservableObject {
                 // Default is a deliberate user click, so it persists Silent — but only
                 // here, on the daemon-confirmed success path, never on a failed reset.
                 self.persistSelectedProfile(FanProfile.silent.id)
-                self.monitor?.switchProfile(.silent)
+                self.monitor?.switchProfile(.silent, applied: self.reopenGate(press))
                 TFLogger.shared.profile("Reset to Default (Silent (Apple Default))")
             }
         }
@@ -489,9 +499,10 @@ final class AppState: ObservableObject {
     func selectProfile(_ profile: FanProfile) {
         guard servicesEnabled else { return }
         let took = seizeControl()
+        let switchToken = profileSwitch.picked(handsOff: profile.curve.handsOff)
         activeProfile = profile
         persistSelectedProfile(profile.id)
-        monitor?.switchProfile(profile)
+        monitor?.switchProfile(profile, applied: reopenGate(switchToken))
         TFLogger.shared.profile("Selected: \(profile.name)")
 
         // Fixed Rate re-applies its RPM (the monitor is hands-off and will not do it).
@@ -522,6 +533,12 @@ final class AppState: ObservableObject {
     /// Clamp to the first fan's reported range. The daemon clamps as a backstop.
     private func clampedFixedRPM(_ rpm: Int) -> Int {
         FanProfile.clampFixedRPM(rpm, fan: latestStatus?.fans.first)
+    }
+
+    /// Called on the monitor's queue once a switch took effect. Hops to the main actor
+    /// behind any write the previous profile queued there, so those are dropped first.
+    private func reopenGate(_ token: Int) -> @Sendable () -> Void {
+        { [weak self] in Task { @MainActor in self?.profileSwitch.switchApplied(token) } }
     }
 
     // MARK: - Profile persistence
