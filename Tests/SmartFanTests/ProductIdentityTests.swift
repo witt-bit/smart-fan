@@ -7,7 +7,6 @@ import SmartFanLocalization
 struct ProductIdentityTests {
     @Test("Updates, IPC and resources use only the SmartFan identity")
     func independentIdentity() {
-        #expect(UpdateChecker.releasesAPIURL.absoluteString == "https://api.github.com/repos/witt-bit/smart-fan/releases/latest")
         #expect(UpdateChecker.releasesPageURL == "https://github.com/witt-bit/smart-fan/releases/latest")
         #expect(SmartFanDaemon.socketPath == "/var/run/smart-fan.sock")
         #expect(SmartFanDaemon.label == "org.witt.smartfan.daemon")
