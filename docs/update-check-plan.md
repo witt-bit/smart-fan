@@ -32,7 +32,7 @@ Both can replace themselves in one click because each ships as a single signed a
 
 ## Why SmartFan should not copy one-click install yet
 
-1. **Three components.** SmartFan consists of the menu bar app, the CLI in `/usr/local/bin` and a root launchd daemon. Replacing only the `.app` immediately causes a version mismatch and the "Update needed" banner. The daemon can only be re-synced with `sudo smart-fan install`.
+1. **Three components.** SmartFan consists of the menu bar app, the CLI and a root launchd daemon. Replacing only the `.app` immediately causes a version mismatch and the "Update needed" banner. The daemon can only be re-synced with `sudo smart-fan install`. *(This is exactly what [daemon-self-management-plan.md](daemon-self-management-plan.md) changes: the app re-syncs the helper itself with one admin prompt, and no CLI is exposed.)*
 2. **Homebrew owns the files.** Homebrew builds from source and owns its keg. If the app replaced files itself, `brew` would record the wrong version. `brew` also refuses to run as root, so `brew upgrade` cannot run inside a single administrator prompt.
 3. **Signing.** Builds are ad-hoc signed and not notarized. Sparkle-style updaters also need an EdDSA signing key and an appcast.
 

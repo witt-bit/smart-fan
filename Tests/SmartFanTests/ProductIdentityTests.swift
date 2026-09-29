@@ -10,7 +10,7 @@ struct ProductIdentityTests {
         #expect(UpdateChecker.releasesPageURL == "https://github.com/witt/smart-fan/releases/latest")
         #expect(SmartFanDaemon.socketPath == "/var/run/smart-fan.sock")
         #expect(SmartFanDaemon.label == "org.witt.smartfan.daemon")
-        #expect(SmartFanDaemon.installPath == "/usr/local/bin/smart-fan")
+        #expect(SmartFanDaemon.installPath == "/Library/PrivilegedHelperTools/org.witt.smartfan.helper")
         #expect(LocalizationCatalog.resourceBundleName == "SmartFan_SmartFanLocalization.bundle")
     }
 }

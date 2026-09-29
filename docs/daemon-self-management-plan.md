@@ -135,3 +135,22 @@ brew upgrade smart-fan     （或手动拖入新的 .app）
 - 同一前置顺带解锁 **P5 iCloud 配置同步（收费功能）**
 
 → 建议作为 **2.0「平台化改造」** 单独规划，一次解决三件事：自更新、隐藏后端、P5。
+
+---
+
+## 12. 任务拆分
+
+- [ ] **P7.1 路径与打包**
+  - [x] `installPath` → `/Library/PrivilegedHelperTools/org.witt.smartfan.helper`（含 `scripts/uninstall.sh`、`ProductIdentityTests`）
+  - [ ] `build-app` 内嵌 CLI 二进制到 `Contents/MacOS/smart-fan`
+  - [ ] `install` 以「本 bundle」为来源；不再管理 `/Applications`；移除 keg 再同步与「寻找匹配 app」逻辑
+- [ ] **P7.2 app 侧状态机**：缺失 / 落后 / 无响应 + 三个动作（各一次授权）+ 哈希幂等
+- [ ] **P7.3 横幅改按钮**：`DaemonUpdateBanner` / `DaemonDownBanner` 从「给命令」改为**可点动作**
+- [ ] **P7.4 分发**：cask 定义、CI 产物、README（用户流程去掉 `sudo … install`；CLI 挪到「开发与贡献」）
+- [ ] **P7.5 测试**：状态机与哈希幂等（纯逻辑）；身份测试已随 P7.1 更新
+
+---
+
+## 13. 开工状态
+
+P7.1 的第一小步已完成：守护进程路径已迁移，`installPath`、卸载脚本、身份测试同步更新；其余待做。

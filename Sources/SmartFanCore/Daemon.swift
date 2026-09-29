@@ -18,7 +18,14 @@ public enum SmartFanDaemon {
     // Cleared at boot; RunAtLoad re-creates the socket at daemon load.
     public static let socketPath = "/var/run/smart-fan.sock"
     public static let plistPath = "/Library/LaunchDaemons/org.witt.smartfan.daemon.plist"
-    public static let installPath = "/usr/local/bin/smart-fan"
+    /// Where the privileged daemon binary lives.
+    ///
+    /// Deliberately **not** `/usr/local/bin/smart-fan`: that is a user-facing command
+    /// location and this project does not expose a CLI to users (the CLI ships inside
+    /// the app bundle for development only). `/Library/PrivilegedHelperTools` is the
+    /// conventional helper location — root-owned and not on PATH — and launchd's
+    /// `ProgramArguments` points at this path.
+    public static let installPath = "/Library/PrivilegedHelperTools/org.witt.smartfan.helper"
     public static let label = "org.witt.smartfan.daemon"
 
     /// Check if the daemon socket exists and accepts connections

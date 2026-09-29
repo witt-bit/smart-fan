@@ -788,23 +788,24 @@ struct Install: ParsableCommand {
             .resolvingSymlinksInPath().path
         let installPath = SmartFanDaemon.installPath
 
-        // Copy the real binary to /usr/local/bin as a root-owned regular file
-        // (root:wheel 0755). launchd execs this as root, so it must live on a
-        // path that isn't user-writable — never a link back into /opt/homebrew/bin
-        // (user-writable → a root daemon exec'ing from there is privilege
-        // escalation). Always overwrite so re-running after `brew upgrade`
+        // Copy the real binary to the helper path as a root-owned regular file
+        // (root:wheel 0755). launchd execs this as root, so it must live on a path
+        // that isn't user-writable — never a link back into the app bundle or a
+        // Homebrew keg (both user-writable → a root daemon exec'ing from there is
+        // privilege escalation). Always overwrite so re-running after an app upgrade
         // re-syncs the installed copy.
         let fm = FileManager.default
-        // On a clean Apple Silicon machine /usr/local/bin may not exist. Fail
-        // loud if it can't be created — silently ignoring it makes every step
-        // after this fail for reasons that make no sense.
+        // The helper directory ships with macOS; create it if this install lacks it.
+        // Fail loud — silently ignoring it makes every later step fail for reasons
+        // that make no sense.
         // (createDirectory(withIntermediateDirectories: true) is a no-op if the
         // directory already exists, so this only throws on a real failure.)
+        let installDir = (installPath as NSString).deletingLastPathComponent
         do {
-            try fm.createDirectory(atPath: "/usr/local/bin", withIntermediateDirectories: true)
+            try fm.createDirectory(atPath: installDir, withIntermediateDirectories: true)
         } catch {
             throw ValidationError("""
-                Couldn't create /usr/local/bin: \(error.localizedDescription)
+                Couldn't create \(installDir): \(error.localizedDescription)
                 The daemon binary can't be installed without it.
                 """)
         }
@@ -824,7 +825,7 @@ struct Install: ParsableCommand {
         // from-source build (.build/release: even same version, newer code) and for
         // Homebrew-via-/opt/homebrew (the keg). When argv[0] IS installPath — re-run
         // install from the installed binary, e.g. sudo's secure_path resolving to the
-        // stale /usr/local/bin copy after `brew upgrade` — copying it onto itself is a
+        // stale installed copy after `brew upgrade` — copying it onto itself is a
         // permanent no-op that would leave the daemon stale and the mismatch warning
         // firing forever. So fall back to the Homebrew keg and install it IF it's a
         // newer version. The keg's version is read from its Cellar PATH (opt/<formula>
@@ -846,13 +847,13 @@ struct Install: ParsableCommand {
         // root:wheel 0755 and rename() is atomic, so installPath's committed state is
         // always the root-owned binary. The residual window would only matter if the
         // source binary were itself group/other-writable (ours isn't) — a
-        // user-writable /usr/local/bin is the pre-existing bad state item 1's throw
+        // user-writable install directory is the pre-existing bad state item 1's throw
         // covers, not something this staging introduces. Documented so safe-here isn't
         // mistaken for unaudited.
         func installBinary(from source: String) throws {
             // Enforce the assumption the comment above relies on rather than trusting
             // it: a group/other-writable source would briefly yield a root-owned but
-            // other-writable temp in /usr/local/bin — a write-into-root-binary window.
+            // other-writable temp in the install directory — a write-into-root-binary window.
             // Reject it up front, with the exact fix. No effect on a correctly-built
             // source (0755/0555 keg or from-source binary).
             if let perms = (try? fm.attributesOfItem(atPath: source))?[.posixPermissions] as? Int,
@@ -999,7 +1000,7 @@ struct Install: ParsableCommand {
         //   1. Next to the running binary (<keg>/bin/smart-fan -> <keg>/SmartFan.app):
         //      the normal `sudo smart-fan install` path, via Homebrew's bin symlink.
         //   2. Homebrew's stable opt symlink — needed when the copy that this command
-        //      places in /usr/local/bin is what's run (there "up two dirs" is /usr,
+        //      places at `installPath` is what's run (there the parent directories hold
         //      no app). /opt/homebrew and /usr/local are the only two Homebrew
         //      prefixes on macOS (Apple Silicon / Intel), and opt/<formula> always
         //      points at the current keg, so this stays version-independent.
@@ -1108,8 +1109,9 @@ struct Install: ParsableCommand {
         print("Done.")
     }
 
-    /// When this run IS the installed copy (sudo's secure_path picks /usr/local/bin
-    /// after `brew upgrade`), the Homebrew keg to re-sync from if it is strictly newer.
+    /// When this run IS the installed copy (sudo's secure_path picks the installed
+    /// helper after `brew upgrade`), the Homebrew keg to re-sync from if it is
+    /// strictly newer.
     /// Its version is read from the keg's resolved Cellar path — no execution.
     static func newerHomebrewKeg(than current: String) -> (path: String, version: String)? {
         let fm = FileManager.default
