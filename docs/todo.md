@@ -1,0 +1,115 @@
+# 待办事项（统一索引）
+
+本文件是**所有未完成、待决策、待清理事项的唯一索引**。详细的背景与设计在各计划文档里，这里只汇总"还剩什么、下一步做什么"。
+
+- 状态：随开发更新（完成一项就勾掉并注明提交）
+- 相关计划：[daemon-self-management-plan.md](daemon-self-management-plan.md) · [menu-bar-display-plan.md](menu-bar-display-plan.md) · [update-check-plan.md](update-check-plan.md)
+- 优先标记：🔴 阻塞发布 · 🟠 应尽快 · 🟡 有空再做 · ⬜ 待决策
+
+---
+
+## 1. 进行中：P7 守护进程随 App 自管理
+
+详见 [daemon-self-management-plan.md](daemon-self-management-plan.md)。
+
+- [x] **P7.1 路径与打包** — `installPath` 迁到 `/Library/PrivilegedHelperTools/`；`build-app --cli` 内嵌二进制；`install` 识别所在 bundle；自我复制防护
+  - [x] 上述三项（`d46d2c9`、`6aeb210`）
+  - [ ] 🟡 **清理死代码**：cask 下已无意义的 keg 再同步逻辑与「寻找匹配 app」旧分支（`newerHomebrewKeg`、`/opt/homebrew/opt/...` 候选）
+- [x] **P7.2 app 侧状态机** — `syncBackgroundService()` 一个动作覆盖缺失/落后/无响应 + SHA-256 幂等（`f0699c0`）
+- [x] **P7.3 横幅改按钮** — 关于页「更新后台服务」、风扇页「修复后台服务」
+- [ ] 🟠 **P7.4 分发**
+  - [ ] cask 定义（Homebrew cask，只交付 `.app`）
+  - [ ] CI 产物流转（发行包 → cask 引用）
+  - [ ] README：安装章节以 **cask 为主**；用户流程删掉 `sudo … install`；CLI 归入「开发与贡献」
+- [ ] 🟡 **P7.5 测试** — 状态机与哈希幂等的纯逻辑测试补全（已覆盖 shell 引号、AppleScript 转义、内容哈希、enclosingBundle）
+- [ ] ⬜ **实机验证（需要交互式授权，无法自动化）**
+  - [ ] 真实弹出管理员密码框 → helper 装到 `/Library/PrivilegedHelperTools/`
+  - [ ] `scripts/setup.sh reinstall` → `doctor` 全绿
+  - [ ] 故意制造版本不一致（替换 helper 为旧二进制）→ 验证「更新后台服务」按钮
+  - [ ] `scripts/setup.sh uninstall` / `uninstall -f` 各跑一次
+
+## 2. 上游合并（MacFanPro 0.2.3.24 → 0.2.3.29）
+
+- [x] **批次 1 — Core 修复**（`ca33857`）
+  - [x] 热保护挂起期间命令失败会把热风扇掉回自动
+  - [x] 更新检查被 GitHub 未认证 API 的 60 次/小时限额打中（改用 `/releases/latest` 重定向）
+- [x] **批次 2 — 更新检查结果状态**（`8e4ee16`）：结果行 + 超长换行 + 关闭即清除 + 完成/失败语义
+- [ ] ⬜ **批次 3 — 14 种新 GUI 语言**（`6fb6c8f`）
+  - 机制很简单：`supportedLanguages = AppLanguage.allCases.filter { $0 != .system }`（加语言 = 加一个 JSON，可合并）
+  - **卡在内容**：上游 14 个 JSON 各 **57 键**，我们的 `en.json` 有 **84 键** → 差 **27 键**（菜单栏显示、首选项各页、固定速率、后台服务同步…）
+  - 直接并入会让 `LocalizationTests`（要求三语言键集合一致）**失败**，界面也会中英混杂
+  - 选项：**(a)** 我补翻 27 键 × 14 语言（≈378 条，机器起草、未人工复核）；**(b)（推荐）** 只合机制、翻译交给社区贡献（"补一种语言的 JSON" 是理想的第一个 issue）；**(c)** 先不动
+- [ ] 🟡 **文档类未合**
+  - [ ] 上游各版本 release notes（0.2.3.24–29）与 validation 记录
+  - [ ] README 双语化（`b456b63`：英文 README + 中文版）
+  - [ ] 刷新 README 截图（当前仍是 0.2.3.19 时期的菜单界面，且下拉菜单已下线，截图已不准确）
+
+## 3. 更新检查功能（Phase 1 剩余）
+
+详见 [update-check-plan.md](update-check-plan.md)。已完成：手动检查按钮、检查中状态、结果行（`8e4ee16`）。
+
+- [ ] 🟡 自动检查开关（`autoCheckUpdates`，默认开）
+- [ ] 🟡 上次检查时间（`updateLastCheckedAt`，如"上次检查：今天 14:02"）
+- [ ] 🟡 失败细分：`offline` / `rateLimited`（403、429）/ `other`，只有手动检查才显示原因
+- [ ] 🟡 发行说明：`Release` 解码 `body`、`published_at` 并在应用内展示
+- [ ] 🟡 约 10 秒冷却，防止连点保护限额
+- [ ] 🟡 手动检查无视「稍后」但不清除它
+- Phase 2（发行说明窗口 / 按安装方式给指引）→ **已被 P7 取代**
+- Phase 3（一键更新 app 自身）→ **已被 cask 分发取代，不做**
+
+## 4. 菜单栏显示（低优先级）
+
+详见 [menu-bar-display-plan.md](menu-bar-display-plan.md)。
+
+- [ ] 🟡 **MB-6.1** 菜单栏风扇图标随转速旋转（Core Animation 旋转图层，默认关闭；映射需压缩，满转 ≈1.5 转/秒）
+- [ ] 🟡 菜单栏分段**拖动排序**（当前是固定顺序 + 显隐）
+
+## 5. 后续版本：iCloud 配置同步（收费功能）
+
+详见 [menu-bar-display-plan.md](menu-bar-display-plan.md) §13。
+
+- [ ] ⬜ **Q8** 同步哪些配置？（仅菜单栏显示 / 全部偏好 / 含校准与模式）
+- [ ] ⬜ **Q9** 分发与付费模式？（App Store IAP / 第三方授权 / 其他）
+- [ ] ⬜ **Q10** 未授权用户的降级行为？
+- [ ] ⬜ MB-5.1…5.6（决策 → 签名改造 → 同步层 → 付费门槛 → UI → 文档合规）
+
+**三个硬约束**（不解决就无法实现）：
+1. iCloud 权限**要求真实签名**，当前 ad-hoc 用不了
+2. StoreKit IAP **仅限 App Store 分发**
+3. MIT + 源码可构建 → **付费门槛可被绕过**，需先定许可策略
+
+→ 与「2.0 平台化改造」（真签名 + 内嵌 helper + `SMAppService`）**同一前置**，建议合并规划。
+
+## 6. 发布前专项
+
+- [ ] 🟠 **性能：自适应轮询**（详见 menu-bar-display-plan §11）
+  - 实测：完整 App 空转 **3.42%** 单核；`watch` @10Hz **2.17%** vs @1Hz **0.23%**
+  - 上游 Experiment 2 佐证：传感器扫描 ≈ **2.7pp**（占空闲 CPU ~64%），他们选择不改（保"每次读取都校验 + 每个传感器都覆盖"）
+  - 我们的方案减的是**轮询频率**（不控制时 10Hz→1Hz），不减 key、不跳校验 → 不冲突
+  - 目标：空转 **≤0.5% 单核**
+- [ ] 🔴 **创建 `docs/releases/1.0.0.md`** —— `release.yml` 在打 `v*` tag 时会校验该文件存在，否则**发布流程直接失败**
+- [ ] 🔴 **仓库转公开** —— 当前为私有（匿名访问 404），README 徽章与应用内「检查更新」对外都不可用
+- [ ] 🟠 决定是否推送 **17 个上游 tag**（`v0.2.3.x`，目前只在本地）
+- [ ] 🟡 版本号仍为 `1.0.0`（未发布）；发布时同步 `docs/releases/`、CHANGELOG
+
+## 7. 已知小尾巴 / 清理项
+
+- [ ] 🟡 README 仍含 `0.2.3.19` 时期的示例：`git checkout v0.2.3.19`、`SmartFan-0.2.3.19-macos-arm64`、截图说明
+- [ ] 🟡 README 的「日志与数据」「常见问题」章节仍按**旧版下拉菜单**描述，与实际（首选项窗口）不符
+- [ ] 🟡 `scripts/setup.sh` 无参数现在是显示帮助（原为直接安装）；如需回退为一键安装请说明
+- [ ] 🟡 上游 `codex/*` 等 10 个分支未推送（上游分支，非我们的）
+- [ ] ⬜ 两个提交待推送（`ca33857`、`8e4ee16`）
+
+---
+
+## 已完成（简表）
+
+| 区域 | 状态 |
+|---|---|
+| 项目改名 MacFanPro → SmartFan | ✅ 1.0.0 |
+| 菜单栏可自定义（4 样式 / 度量 / 曲线 / 固定速率 / 首选项窗口） | ✅ P1–P4 共 21 项 |
+| 守护进程自管理（app 内嵌 + 一次授权 + 哈希幂等） | ✅ P7.1–7.3（P7.4/7.5 见上） |
+| 上游 0.2.3.20–23 合并 | ✅ |
+| 上游 0.2.3.24–29 合并（Core + 更新检查 UI） | ✅ 批次 1、2 |
+| `scripts/setup.sh` 统一入口（20 个命令） | ✅ |
+| 仓库引用指向 `witt-bit/smart-fan` | ✅ |
