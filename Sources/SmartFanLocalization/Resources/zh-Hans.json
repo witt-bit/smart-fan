@@ -79,5 +79,8 @@
   "Working…": "处理中…",
   "The background service is up to date.": "后台服务已是最新。",
   "Couldn't update the background service.": "无法更新后台服务。",
-  "This build has no bundled background service; run the command below.": "本构建未内置后台服务；请运行下面的命令。"
+  "This build has no bundled background service; run the command below.": "本构建未内置后台服务；请运行下面的命令。",
+  "Up to date": "已是最新",
+  "{version} available": "有 {version} 可用",
+  "Couldn't reach GitHub": "无法连接 GitHub"
 }

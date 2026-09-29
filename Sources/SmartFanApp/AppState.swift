@@ -70,7 +70,12 @@ final class AppState: ObservableObject {
     /// dismissed version is suppressed until a newer one ships.
     @Published var availableUpdate: AvailableUpdate?
     /// True while the About page's "Check for Updates" is in flight.
-    @Published var updateCheckInProgress = false
+    /// Outcome of the About page's "Check for Updates", shown beside the button.
+    enum ManualUpdateCheck: Equatable {
+        case idle, checking, upToDate, failed
+        case available(String)
+    }
+    @Published var manualUpdateCheck: ManualUpdateCheck = .idle
 
     private let servicesEnabled: Bool
     private var monitor: ThermalMonitor?
@@ -372,22 +377,42 @@ final class AppState: ObservableObject {
         availableUpdate = nil
     }
 
-    /// The About page's "Check for Updates": bypass the daily gate and check now.
-    /// On failure it pulls the next check back to the retry interval, like the
-    /// background check, so a manual attempt doesn't reset the whole day.
+    /// The About page's "Check for Updates": check now instead of waiting for the daily
+    /// check. A found version shows even if "Later" dismissed it (the user asked); the
+    /// dismissal still applies to the daily check.
     func checkForUpdatesNow() {
-        guard !updateCheckInProgress else { return }
-        updateCheckInProgress = true
-        UserDefaults.standard.removeObject(forKey: Self.updateNextCheckKey)
-        Task {
+        guard manualUpdateCheck != .checking else { return }
+        manualUpdateCheck = .checking
+        Task { [weak self] in
             let result = await UpdateChecker.check()
-            if case .failed = result {
-                UserDefaults.standard.set(Date().addingTimeInterval(Self.updateRetryInterval),
-                                          forKey: Self.updateNextCheckKey)
-            }
-            applyUpdateCheck(result)
-            updateCheckInProgress = false
+            self?.applyManualUpdateCheck(result)
         }
+    }
+
+    func applyManualUpdateCheck(_ result: UpdateCheckResult) {
+        applyUpdateCheck(result)
+        switch result {
+        case .update(let update):
+            availableUpdate = update
+            manualUpdateCheck = .available(update.version)
+        case .upToDate:
+            manualUpdateCheck = .upToDate
+        case .failed:
+            manualUpdateCheck = .failed
+            // A transient failure must not count as today's check.
+            UserDefaults.standard.set(Date().addingTimeInterval(Self.updateRetryInterval),
+                                      forKey: Self.updateNextCheckKey)
+            return
+        }
+        // A completed check counts as today's; the daily one need not repeat it.
+        UserDefaults.standard.set(Date().addingTimeInterval(Self.updateCheckInterval),
+                                  forKey: Self.updateNextCheckKey)
+    }
+
+    /// The page was left: a shown result is stale next time, so return the row to its
+    /// label. A check still in flight keeps its state and reports when it finishes.
+    func clearManualUpdateResult() {
+        if manualUpdateCheck != .checking { manualUpdateCheck = .idle }
     }
 
     // MARK: - Monitoring

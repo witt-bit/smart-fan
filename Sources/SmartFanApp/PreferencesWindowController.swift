@@ -13,10 +13,12 @@ import SmartFanCore
 import SmartFanLocalization
 
 @MainActor
-final class PreferencesWindowController {
+final class PreferencesWindowController: NSObject, NSWindowDelegate {
     private let window: NSWindow
+    private let appState: AppState
 
     init(appState: AppState, language: AppLanguageStore) {
+        self.appState = appState
         let root = PreferencesView()
             .environmentObject(appState)
             .environmentObject(language)
@@ -28,6 +30,8 @@ final class PreferencesWindowController {
         window.setContentSize(NSSize(width: 640, height: 460))
         window.center()
         self.window = window
+        super.init()
+        window.delegate = self
     }
 
     func show() {
@@ -35,5 +39,12 @@ final class PreferencesWindowController {
         // `activate(ignoringOtherApps:)`.
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+    }
+
+    /// A check result belongs to the viewing that produced it. Closing the window
+    /// clears it, so reopening never shows a stale answer — the window is hidden, not
+    /// destroyed, so it would otherwise still be on screen.
+    func windowWillClose(_ notification: Notification) {
+        appState.clearManualUpdateResult()
     }
 }

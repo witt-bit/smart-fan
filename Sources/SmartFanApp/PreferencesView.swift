@@ -387,19 +387,46 @@ struct AboutPreferences: View {
 
             LabeledValue(language.text("Version"), value: SmartFanVersion.current)
 
-            Button {
-                appState.checkForUpdatesNow()
-            } label: {
-                Label(language.text(appState.updateCheckInProgress ? "Checking…" : "Check for Updates"),
-                      systemImage: "arrow.triangle.2.circlepath")
+            // The button and its result share one row, in the fonts of the row above.
+            // A result too long for the space wraps and the row grows, so no text is
+            // cut short. The result is cleared when the window closes (see
+            // PreferencesWindowController), so reopening never shows a stale answer.
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Button {
+                    appState.checkForUpdatesNow()
+                } label: {
+                    Label(language.text(appState.manualUpdateCheck == .checking ? "Checking…" : "Check for Updates"),
+                          systemImage: "arrow.triangle.2.circlepath")
+                }
+                .disabled(appState.manualUpdateCheck == .checking)
+                .fixedSize()   // the result wraps instead; the button keeps its width
+
+                Spacer(minLength: 8)
+
+                if let result = updateResultText {
+                    Text(result)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            .disabled(appState.updateCheckInProgress)
 
             Divider()
 
             Link(language.text("Homepage"), destination: URL(string: "https://github.com/witt-bit/smart-fan")!)
             Link(language.text("License"), destination: URL(string: "https://github.com/witt-bit/smart-fan/blob/main/LICENSE")!)
             Link(language.text("Third-party notices"), destination: URL(string: "https://github.com/witt-bit/smart-fan/blob/main/NOTICE.md")!)
+        }
+    }
+
+    /// `nil` while there is nothing to report, so the row collapses to just the button.
+    private var updateResultText: String? {
+        switch appState.manualUpdateCheck {
+        case .idle, .checking: return nil
+        case .upToDate: return language.text("Up to date")
+        case .failed: return language.text("Couldn't reach GitHub")
+        case .available(let version): return language.text("{version} available", ["version": version])
         }
     }
 }

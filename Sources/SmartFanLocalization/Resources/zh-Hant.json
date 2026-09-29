@@ -9,6 +9,7 @@
   "Check for Updates" : "檢查更新",
   "Checking…" : "檢查中…",
   "Compact" : "簡潔",
+  "Couldn't reach GitHub" : "無法連接 GitHub",
   "Couldn't update the background service." : "無法更新後台服務。",
   "Current Mode" : "當前模式",
   "Default" : "默認",
@@ -71,6 +72,7 @@
   "This build has no bundled background service; run the command below." : "本構建未內置後台服務；請運行下面的命令。",
   "Time Window" : "時間窗口",
   "Units" : "單位",
+  "Up to date" : "已是最新",
   "Update available" : "有可用更新",
   "Update needed" : "需要更新",
   "Update the background service" : "更新後台服務",
@@ -79,5 +81,6 @@
   "What's new" : "更新內容",
   "Working…" : "處理中…",
   "{rpm} RPM" : "{rpm} RPM",
+  "{version} available" : "有 {version} 可用",
   "°F / °C" : "°F / °C"
 }

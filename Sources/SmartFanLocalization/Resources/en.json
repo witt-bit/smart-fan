@@ -79,5 +79,8 @@
   "Working…": "Working…",
   "The background service is up to date.": "The background service is up to date.",
   "Couldn't update the background service.": "Couldn't update the background service.",
-  "This build has no bundled background service; run the command below.": "This build has no bundled background service; run the command below."
+  "This build has no bundled background service; run the command below.": "This build has no bundled background service; run the command below.",
+  "Up to date": "Up to date",
+  "{version} available": "{version} available",
+  "Couldn't reach GitHub": "Couldn't reach GitHub"
 }
