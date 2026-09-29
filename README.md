@@ -302,6 +302,8 @@ bash scripts/package-release.sh
 - [GUI 本地化](docs/gui-localization.md)：英语键名、简体翻译、繁体字形转换及资源校验流程。
 - [菜单栏标签验证](docs/menu-bar-label-validation.md)：最小宽度、位数变化和隔离显示测试。
 - [菜单栏显示与首选项验证](docs/menu-bar-display-validation.md)：1.0.0 的状态栏项、四种样式、新度量与固定速率；含未验证项与残余风险。
+- [守护进程随 App 自管理计划](docs/daemon-self-management-plan.md)：cask 分发、app 内嵌后端、不再向用户提供 CLI。
+- [检查更新功能计划](docs/update-check-plan.md)：手动检查、可见状态、自动检查开关。
 - [M4 风扇接管修复](docs/m4-handoff-repair.md)：相关硬件行为与修复依据。
 
 `docs/upstream/` 和早期验收文档用于保存历史背景，不代表当前发行版或所有机型的测试结论。

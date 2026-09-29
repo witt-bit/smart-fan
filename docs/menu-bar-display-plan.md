@@ -438,6 +438,7 @@ AppDelegate
 - **性能优化（自适应轮询等）**：推迟到 1.0 发布前专项（见 §11）。
 - **配置项 iCloud 同步与收费**：后续版本（见 §13）。
 - **部分 CLI 能力弃用、改为图形化**（如 `smart-fan set` → 风扇页固定速率滑块）：后续方向。
+- **守护进程随 App 自管理**（app 内嵌后端、cask 分发、不再向普通用户提供 CLI）：见 [daemon-self-management-plan.md](daemon-self-management-plan.md)。
 
 ---
 
