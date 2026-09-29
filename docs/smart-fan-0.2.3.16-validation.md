@@ -35,10 +35,10 @@
 ## 公开发行
 
 - 发行源提交：`45cac23cbd98247fb4f3a0496c0a50e7b16ad7a9`，标签 `v0.2.3.16`。
-- [源码 CI](https://github.com/witt/smart-fan/actions/runs/35948514975)、[发行 CI](https://github.com/witt/smart-fan/actions/runs/35948515100)、[Homebrew CI](https://github.com/witt/homebrew-smart-fan/actions/runs/35948847655) 均通过。
+- [源码 CI](https://github.com/witt-bit/smart-fan/actions/runs/35948514975)、[发行 CI](https://github.com/witt-bit/smart-fan/actions/runs/35948515100)、[Homebrew CI](https://github.com/witt-bit/homebrew-smart-fan/actions/runs/35948847655) 均通过。
 - 下载草稿附件，`SHA256SUMS` 校验通过，与 GitHub asset digest 一致：`SmartFan-0.2.3.16-macos-arm64.tar.gz` 为 `206536a3ed37b3b730fdb7a96269473104bd20b627258e46e46fa20ce5d8800f`。CLI 与应用版本为 0.2.3.16，严格代码签名校验通过。
 - 以先退出应用、同步后台、再打开的步骤安装下载产物；已安装的 CLI 与应用二进制与发行包逐字节一致。通过 CLI/daemon 将两只风扇设为 2000 RPM，实测到位后恢复 Apple 自动控制，重新打开应用；当日日志 0 条 ERROR。
-- 本机 Homebrew 7.0.6 拒绝加载未受信任 tap 的配方，需先执行 `brew trust witt/smart-fan`；README 与 tap 说明已补充这一步。
+- 本机 Homebrew 7.0.6 拒绝加载未受信任 tap 的配方，需先执行 `brew trust witt-bit/smart-fan`；README 与 tap 说明已补充这一步。
 
-- 执行 `brew trust witt/smart-fan` 后，Homebrew 从 0.2.3.15 正常升级到 0.2.3.16，`brew test` 通过，旧版本已从 Cellar 清理。按先退出应用、同步后台、再打开的步骤安装后，后台服务 CLI、应用与 Homebrew 版逐字节一致，版本均为 0.2.3.16；当日日志 0 条 ERROR。
+- 执行 `brew trust witt-bit/smart-fan` 后，Homebrew 从 0.2.3.15 正常升级到 0.2.3.16，`brew test` 通过，旧版本已从 Cellar 清理。按先退出应用、同步后台、再打开的步骤安装后，后台服务 CLI、应用与 Homebrew 版逐字节一致，版本均为 0.2.3.16；当日日志 0 条 ERROR。
 - README 的英文与简体中文截图来自本机实际运行的 0.2.3.16 菜单面板（按窗口截取，520×912 像素，即 260×456 pt 的 2 倍图）。

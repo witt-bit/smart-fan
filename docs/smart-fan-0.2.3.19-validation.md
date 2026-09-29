@@ -16,7 +16,7 @@
 
 ## 公开发行
 
-- 发行源提交：`cab2c77`，标签 `v0.2.3.19`。[源码 CI](https://github.com/witt/smart-fan/actions/runs/35977197100)、[发行 CI](https://github.com/witt/smart-fan/actions/runs/35977196614) 通过。
+- 发行源提交：`cab2c77`，标签 `v0.2.3.19`。[源码 CI](https://github.com/witt-bit/smart-fan/actions/runs/35977197100)、[发行 CI](https://github.com/witt-bit/smart-fan/actions/runs/35977196614) 通过。
 - 下载草稿附件，`SHA256SUMS` 校验通过，与 GitHub asset digest 一致：`SmartFan-0.2.3.19-macos-arm64.tar.gz` 为 `25df4e820bae0343b77d494b27cdb086783255d668ce5a355aba1b74fb4f5f69`。版本为 0.2.3.19，严格代码签名校验通过。
 - 以先退出应用、同步后台、再打开的步骤安装下载产物；已安装的后台服务 CLI 与应用二进制与发行包逐字节一致。
 - Homebrew 从 0.2.3.18 升级到 0.2.3.19，`brew test` 通过；同步后后台服务 CLI、应用与 Homebrew 版逐字节一致。

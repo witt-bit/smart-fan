@@ -1,7 +1,7 @@
 # SmartFan
 
-[![CI](https://github.com/witt/smart-fan/actions/workflows/ci.yml/badge.svg)](https://github.com/witt/smart-fan/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/witt/smart-fan?sort=date)](https://github.com/witt/smart-fan/releases/latest)
+[![CI](https://github.com/witt-bit/smart-fan/actions/workflows/ci.yml/badge.svg)](https://github.com/witt-bit/smart-fan/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/witt-bit/smart-fan?sort=date)](https://github.com/witt-bit/smart-fan/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 面向 Apple Silicon Mac 的免费开源风扇控制工具，在菜单栏查看温度和转速，按温度自动调节风扇，也可通过命令行控制和记录数据。
@@ -49,20 +49,20 @@ SmartFan 基于 [ThermalForge](https://github.com/ProducerGuy/ThermalForge) 独�
 在终端中依次执行：
 
 ```bash
-brew tap witt/smart-fan
-brew trust witt/smart-fan
+brew tap witt-bit/smart-fan
+brew trust witt-bit/smart-fan
 brew install smart-fan
 sudo "$(brew --prefix smart-fan)/bin/smart-fan" install
 open /Applications/SmartFan.app
 ```
 
-Homebrew 7 起默认不加载第三方 tap 的配方，需要先用 `brew trust` 明确信任本 tap（只需一次）。Homebrew 负责下载、编译和管理版本；`sudo` 那条命令将对应版本的应用和后台服务安装到系统中。配方维护在 [witt/homebrew-smart-fan](https://github.com/witt/homebrew-smart-fan)。
+Homebrew 7 起默认不加载第三方 tap 的配方，需要先用 `brew trust` 明确信任本 tap（只需一次）。Homebrew 负责下载、编译和管理版本；`sudo` 那条命令将对应版本的应用和后台服务安装到系统中。配方维护在 [witt-bit/homebrew-smart-fan](https://github.com/witt-bit/homebrew-smart-fan)。
 
 ### 方式二：下载发行包安装
 
 此方式无需安装 Homebrew 或 Xcode。
 
-1. 前往 [Releases](https://github.com/witt/smart-fan/releases/latest)，下载 `SmartFan-版本号-macos-arm64.tar.gz`。请选择这个发行包，而非 GitHub 自动生成的 `Source code` 源码包。
+1. 前往 [Releases](https://github.com/witt-bit/smart-fan/releases/latest)，下载 `SmartFan-版本号-macos-arm64.tar.gz`。请选择这个发行包，而非 GitHub 自动生成的 `Source code` 源码包。
 2. 双击解压，保留文件夹内的 `SmartFan.app` 和 `bin` 目录。
 3. 在终端中进入解压后的文件夹，执行安装并打开应用。
 
@@ -83,7 +83,7 @@ open /Applications/SmartFan.app
 前提：已安装 Xcode 16 或更高版本。
 
 ```bash
-git clone https://github.com/witt/smart-fan.git
+git clone https://github.com/witt-bit/smart-fan.git
 cd smart-fan
 ./scripts/setup.sh install
 ```
@@ -171,7 +171,7 @@ sudo "$(brew --prefix smart-fan)/bin/smart-fan" install
 open /Applications/SmartFan.app
 ```
 
-`brew upgrade` 更新 Homebrew 中的文件，随后仍需同步后台服务和 `/Applications` 中的应用。如果 Homebrew 提示 `untrusted tap`，先执行一次 `brew trust witt/smart-fan`。使用 `brew --prefix` 指向刚升级的版本，避免误用旧的系统副本。
+`brew upgrade` 更新 Homebrew 中的文件，随后仍需同步后台服务和 `/Applications` 中的应用。如果 Homebrew 提示 `untrusted tap`，先执行一次 `brew trust witt-bit/smart-fan`。使用 `brew --prefix` 指向刚升级的版本，避免误用旧的系统副本。
 
 ### 发行包更新
 
@@ -247,7 +247,7 @@ sudo tail -n 50 "/var/root/Library/Logs/SmartFan/smart-fan-$(date +%F).log"
 
 ### 温度或风扇读数与其他机器不同
 
-不同机型提供的传感器、风扇数量及转速范围可能不同。提交问题时，请附上机型、macOS 版本、SmartFan 版本、安装方式、复现步骤，以及相关状态输出或日志片段。问题反馈入口：[Issues](https://github.com/witt/smart-fan/issues)。
+不同机型提供的传感器、风扇数量及转速范围可能不同。提交问题时，请附上机型、macOS 版本、SmartFan 版本、安装方式、复现步骤，以及相关状态输出或日志片段。问题反馈入口：[Issues](https://github.com/witt-bit/smart-fan/issues)。
 
 ### 温度与 Stats 等工具不一致
 
@@ -289,7 +289,7 @@ scripts/setup.sh package
 
 产物输出到 `dist/`，包括完整应用与 CLI 的 `.tar.gz` 和 `SHA256SUMS`。打包不会替换本机已安装的应用；需要安装开发版本时再运行 `./scripts/setup.sh install`。
 
-提交 [Pull Request](https://github.com/witt/smart-fan/pulls) 时，请说明具体问题、改动范围和验证结果。涉及温控、后台通信或原生菜单行为的修改，应补充对应的本机验证，并区分自动化测试、隔离显示测试和真实硬件结果。
+提交 [Pull Request](https://github.com/witt-bit/smart-fan/pulls) 时，请说明具体问题、改动范围和验证结果。涉及温控、后台通信或原生菜单行为的修改，应补充对应的本机验证，并区分自动化测试、隔离显示测试和真实硬件结果。
 
 ### 文档与维护约定
 
@@ -316,14 +316,14 @@ scripts/setup.sh package
 
 欢迎任何形式的贡献：
 
-- **问题反馈**：在 [Issues](https://github.com/witt/smart-fan/issues) 报告问题或提交兼容性报告，请附上机型、macOS 版本、SmartFan 版本和 `smart-fan status` 输出。
-- **代码**：按 [开发与贡献](#开发与贡献) 中的步骤构建和验证，再通过 [Pull Request](https://github.com/witt/smart-fan/pulls) 提交。
+- **问题反馈**：在 [Issues](https://github.com/witt-bit/smart-fan/issues) 报告问题或提交兼容性报告，请附上机型、macOS 版本、SmartFan 版本和 `smart-fan status` 输出。
+- **代码**：按 [开发与贡献](#开发与贡献) 中的步骤构建和验证，再通过 [Pull Request](https://github.com/witt-bit/smart-fan/pulls) 提交。
 - **翻译**：改进英文或简体中文界面文案，繁体中文由脚本生成，流程见 [GUI 本地化](docs/gui-localization.md)。
 
 ### 贡献者
 
-<a href="https://github.com/witt/smart-fan/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=witt/smart-fan" alt="SmartFan 贡献者">
+<a href="https://github.com/witt-bit/smart-fan/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=witt-bit/smart-fan" alt="SmartFan 贡献者">
 </a>
 
 ## 来源与许可

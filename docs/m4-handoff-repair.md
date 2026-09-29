@@ -72,7 +72,7 @@ The daemon did not restart during these runs. Application logs contained no new 
 The upstream Homebrew formula does not include this fork's changes. To build/install this fork using the existing installer:
 
 ```sh
-git clone https://github.com/witt/smart-fan.git
+git clone https://github.com/witt-bit/smart-fan.git
 cd smart-fan
 ./scripts/setup.sh
 ```

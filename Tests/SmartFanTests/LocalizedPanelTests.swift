@@ -28,7 +28,7 @@ struct LocalizedPanelTests {
         state.daemonUnreachable = true
         state.daemonVersionMismatch = "0.2.3.5"
         state.availableUpdate = AvailableUpdate(version: "99.99.99",
-                                                url: "https://github.com/witt/smart-fan/releases")
+                                                url: "https://github.com/witt-bit/smart-fan/releases")
 
         // The full window keeps its fixed size.
         let window = NSHostingView(rootView: PreferencesView()

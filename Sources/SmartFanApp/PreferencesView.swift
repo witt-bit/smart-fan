@@ -397,9 +397,9 @@ struct AboutPreferences: View {
 
             Divider()
 
-            Link(language.text("Homepage"), destination: URL(string: "https://github.com/witt/smart-fan")!)
-            Link(language.text("License"), destination: URL(string: "https://github.com/witt/smart-fan/blob/main/LICENSE")!)
-            Link(language.text("Third-party notices"), destination: URL(string: "https://github.com/witt/smart-fan/blob/main/NOTICE.md")!)
+            Link(language.text("Homepage"), destination: URL(string: "https://github.com/witt-bit/smart-fan")!)
+            Link(language.text("License"), destination: URL(string: "https://github.com/witt-bit/smart-fan/blob/main/LICENSE")!)
+            Link(language.text("Third-party notices"), destination: URL(string: "https://github.com/witt-bit/smart-fan/blob/main/NOTICE.md")!)
         }
     }
 }

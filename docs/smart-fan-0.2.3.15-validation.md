@@ -28,9 +28,9 @@
 ## 公开发行与最终本机安装
 
 - 发行源提交：`19dc8b2c561dc052a69b5e117230e605eb7496ca`，标签 `v0.2.3.15`。
-- [源码 CI](https://github.com/witt/smart-fan/actions/runs/35655592029)、[发行 CI](https://github.com/witt/smart-fan/actions/runs/35655594811)、[Homebrew CI](https://github.com/witt/homebrew-smart-fan/actions/runs/35656195251) 均通过。
+- [源码 CI](https://github.com/witt-bit/smart-fan/actions/runs/35655592029)、[发行 CI](https://github.com/witt-bit/smart-fan/actions/runs/35655594811)、[Homebrew CI](https://github.com/witt-bit/homebrew-smart-fan/actions/runs/35656195251) 均通过。
 - 下载 GitHub 发行产物，核对 SHA-256、GitHub asset digest、版本与严格代码签名，在本机安装验证。
-- [正式发行](https://github.com/witt/smart-fan/releases/tag/v0.2.3.15) 的公开下载与实测 draft 字节一致。`SmartFan-0.2.3.15-macos-arm64.tar.gz` 的 SHA-256 为 `040e9437bae1e04a4348dedafacb92215f0c8354500050a3e6509bed86d3aa04`。
+- [正式发行](https://github.com/witt-bit/smart-fan/releases/tag/v0.2.3.15) 的公开下载与实测 draft 字节一致。`SmartFan-0.2.3.15-macos-arm64.tar.gz` 的 SHA-256 为 `040e9437bae1e04a4348dedafacb92215f0c8354500050a3e6509bed86d3aa04`。
 - Homebrew 从 0.2.3.14 正常升级到 0.2.3.15，严格 audit 和 `brew test` 通过；应用、CLI、daemon 与 Homebrew 安装源哈希一致，版本均为 0.2.3.15。
 - 下载产物及 Homebrew 最终安装均采用先退出应用、同步后台、再打开的步骤。两次完整安装与运行检查均没有新增 ERROR 或崩溃报告。
 - 下载产物及 Homebrew 安装各完成三语言、两种单位、关闭重开和 20 次真实温度刷新检查，菜单高度、位置、间距及配置保持正常。

@@ -22,14 +22,14 @@
 
 | 文件 | 用途 |
 | --- | --- |
-| [SmartFan-VERSION-macos-arm64.tar.gz](https://github.com/witt/smart-fan/releases/download/vVERSION/SmartFan-VERSION-macos-arm64.tar.gz) | 完整应用与 CLI，解压后安装，无需 Xcode |
-| [SHA256SUMS](https://github.com/witt/smart-fan/releases/download/vVERSION/SHA256SUMS) | 下载完整性校验 |
+| [SmartFan-VERSION-macos-arm64.tar.gz](https://github.com/witt-bit/smart-fan/releases/download/vVERSION/SmartFan-VERSION-macos-arm64.tar.gz) | 完整应用与 CLI，解压后安装，无需 Xcode |
+| [SHA256SUMS](https://github.com/witt-bit/smart-fan/releases/download/vVERSION/SHA256SUMS) | 下载完整性校验 |
 
-选择一种安装方式：[Homebrew](https://github.com/witt/smart-fan#方式一通过-homebrew-安装) · [下载发行包](https://github.com/witt/smart-fan#方式二下载发行包安装) · [源码构建](https://github.com/witt/smart-fan#方式三从源码构建安装)。
+选择一种安装方式：[Homebrew](https://github.com/witt-bit/smart-fan#方式一通过-homebrew-安装) · [下载发行包](https://github.com/witt-bit/smart-fan#方式二下载发行包安装) · [源码构建](https://github.com/witt-bit/smart-fan#方式三从源码构建安装)。
 
 ## 升级说明
 
-填写本版本需要用户采取的动作。按当前安装流程，更新前先退出应用；Homebrew 更新后还需同步后台服务和应用，详见 [更新步骤](https://github.com/witt/smart-fan#更新)。
+填写本版本需要用户采取的动作。按当前安装流程，更新前先退出应用；Homebrew 更新后还需同步后台服务和应用，详见 [更新步骤](https://github.com/witt-bit/smart-fan#更新)。
 
 ## 验证与限制
 
@@ -38,4 +38,4 @@
 - 签名与公证：填写本次产物的真实状态。
 - 验证记录：填写已经存在、与本版本对应的记录链接。
 
-**完整变更：** [vPREVIOUS…vVERSION](https://github.com/witt/smart-fan/compare/vPREVIOUS...vVERSION)
+**完整变更：** [vPREVIOUS…vVERSION](https://github.com/witt-bit/smart-fan/compare/vPREVIOUS...vVERSION)
