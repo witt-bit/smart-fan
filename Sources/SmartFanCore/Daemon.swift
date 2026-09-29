@@ -28,6 +28,21 @@ public enum SmartFanDaemon {
     public static let installPath = "/Library/PrivilegedHelperTools/org.witt.smartfan.helper"
     public static let label = "org.witt.smartfan.daemon"
 
+    /// Walk up from an executable to the `*.app` bundle that contains it, if any.
+    ///
+    /// The app invoking its own bundled CLI is the normal install path now, and from
+    /// inside a bundle the app is the parent of `Contents/MacOS` — not sitting beside
+    /// the binary, which is what the older install candidates assumed.
+    public static func enclosingBundle(of executable: URL) -> String? {
+        var url = executable
+        for _ in 0..<4 {
+            url = url.deletingLastPathComponent()
+            if url.pathExtension == "app" { return url.path }
+            if url.path == "/" { return nil }
+        }
+        return nil
+    }
+
     /// Check if the daemon socket exists and accepts connections
     public static var isRunning: Bool {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)

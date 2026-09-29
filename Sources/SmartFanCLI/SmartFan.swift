@@ -732,12 +732,13 @@ struct Install: ParsableCommand {
         let resyncKeg = sourceBinary.path == URL(fileURLWithPath: SmartFanDaemon.installPath).resolvingSymlinksInPath().path
             ? Self.newerHomebrewKeg(than: SmartFanVersion.current) : nil
         let installVersion = resyncKeg?.version ?? SmartFanVersion.current
-        let appCandidates = [
-            sourceBinary.deletingLastPathComponent().appendingPathComponent("SmartFan.app").path,
-            sourceBinary.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("SmartFan.app").path,
-            "/opt/homebrew/opt/smart-fan/SmartFan.app",
-            "/usr/local/opt/smart-fan/SmartFan.app",
-        ]
+        /// Walk up from an executable to the `*.app` bundle that contains it, if any.
+        var appCandidates: [String] = []
+        if let enclosing = SmartFanDaemon.enclosingBundle(of: sourceBinary) { appCandidates.append(enclosing) }
+        appCandidates.append(sourceBinary.deletingLastPathComponent().appendingPathComponent("SmartFan.app").path)
+        appCandidates.append(sourceBinary.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("SmartFan.app").path)
+        appCandidates.append("/opt/homebrew/opt/smart-fan/SmartFan.app")
+        appCandidates.append("/usr/local/opt/smart-fan/SmartFan.app")
         guard appCandidates.contains(where: {
             let info = NSDictionary(contentsOfFile: "\($0)/Contents/Info.plist")
             return info?["CFBundleShortVersionString"] as? String == installVersion
@@ -1029,6 +1030,14 @@ struct Install: ParsableCommand {
         }) {
             print("Using app bundle at \(appSource) (\(wantedVersion))")
 
+            if appSource == appDest {
+                // Already where it belongs — a cask (or the user) put it there, and
+                // ignoring this case else copies the bundle onto itself. Counted as
+                // fresh so the upgrade-recovery relaunch below behaves identically.
+                print("App bundle is already in place at \(appDest) — nothing to copy.")
+                freshBundleInstalled = true
+            } else {
+
             // Replace any existing bundle. If removal fails, FAIL LOUD — do not
             // swallow it. Homebrew silently ignoring this is exactly what left a
             // stale bundle in place and produced the nested-path confusion.
@@ -1053,6 +1062,7 @@ struct Install: ParsableCommand {
 
             print("Installed SmartFan.app to \(appDest)")
             freshBundleInstalled = true
+            }
         } else {
             print("Note: no \(wantedVersion) app bundle found — leaving /Applications untouched. Checked:")
             for path in candidates {
@@ -1249,6 +1259,13 @@ struct BuildApp: ParsableCommand {
     @Option(name: .long, help: "MIT license file to include in the application")
     var licenseFile: String = "LICENSE"
 
+    /// The `smart-fan` binary to embed as `Contents/MacOS/smart-fan`. The app installs
+    /// the background service from this copy, so the two can never be different builds
+    /// and no download is needed (docs/daemon-self-management-plan.md). It doubles as
+    /// the development-only CLI; it is never put on PATH.
+    @Option(name: .long, help: "Path to the smart-fan binary to embed as the bundled CLI/daemon")
+    var cli: String?
+
     func run() throws {
         let fm = FileManager.default
 
@@ -1257,6 +1274,9 @@ struct BuildApp: ParsableCommand {
         }
         guard fm.fileExists(atPath: icon) else {
             throw ValidationError("Icon not found: \(icon)")
+        }
+        if let cli, !fm.fileExists(atPath: cli) {
+            throw ValidationError("CLI binary not found: \(cli)")
         }
 
         guard fm.fileExists(atPath: licenseFile) else {
@@ -1283,6 +1303,11 @@ struct BuildApp: ParsableCommand {
         try fm.createDirectory(atPath: resources, withIntermediateDirectories: true)
 
         try fm.copyItem(atPath: binary, toPath: "\(macOSDir)/SmartFanApp")
+        // The embedded CLI/daemon source. Lives in MacOS/ because it is an executable;
+        // the app copies it to the root-owned helper path at install time.
+        if let cli {
+            try fm.copyItem(atPath: cli, toPath: "\(macOSDir)/smart-fan")
+        }
         try fm.copyItem(atPath: icon, toPath: "\(resources)/AppIcon.icns")
         try fm.copyItem(atPath: licenseFile, toPath: "\(resources)/LICENSE")
         try fm.copyItem(at: resourceSource,

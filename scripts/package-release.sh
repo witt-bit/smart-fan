@@ -16,7 +16,7 @@ trap 'rm -rf "$stage"' EXIT
 name="SmartFan-$version-macos-$architecture"
 mkdir -p "$stage/$name/bin"
 cp "$bin_dir/smart-fan" "$stage/$name/bin/smart-fan"
-"$bin_dir/smart-fan" build-app --binary "$bin_dir/SmartFanApp" \
+"$bin_dir/smart-fan" build-app --binary "$bin_dir/SmartFanApp" --cli "$bin_dir/smart-fan" \
     --icon SmartFan.icns --dest "$stage/$name/SmartFan.app"
 cp LICENSE NOTICE.md README.md "$stage/$name/"
 cp -R ThirdPartyNotices "$stage/$name/"

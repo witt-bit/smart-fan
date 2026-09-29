@@ -9,7 +9,7 @@ if [ ! -f SmartFan.icns ]; then
     swift scripts/generate-icon.swift
     iconutil -c icns SmartFan.iconset -o SmartFan.icns
 fi
-"$bin_dir/smart-fan" build-app --binary "$bin_dir/SmartFanApp" \
+"$bin_dir/smart-fan" build-app --binary "$bin_dir/SmartFanApp" --cli "$bin_dir/smart-fan" \
     --icon SmartFan.icns --dest "$bin_dir/SmartFan.app"
 codesign --force --deep --sign - "$bin_dir/SmartFan.app"
 sudo "$bin_dir/smart-fan" install "$@"
