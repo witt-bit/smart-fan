@@ -561,33 +561,96 @@ final class AppState: ObservableObject {
 
     // MARK: - Daemon recovery
 
+    /// What the last attempt to bring the background service in line did.
+    enum DaemonSyncState: Equatable {
+        case idle
+        case working
+        case succeeded
+        /// The prompt was declined or the install failed; the reason is logged.
+        case failed
+        /// There is no bundled binary to install from (an unbundled development run),
+        /// so the UI must fall back to showing the command.
+        case unavailable
+    }
+    @Published var daemonSyncState: DaemonSyncState = .idle
+
+    /// True when the background service is not in the state this app needs: absent, a
+    /// different build, or not answering. Drives the banner's action.
+    var backgroundServiceNeedsSync: Bool {
+        !SmartFanDaemon.isInstalled || daemonVersionMismatch != nil || daemonUnreachable
+    }
+
+    /// Install, update or restart the background service so it matches this app, with a
+    /// single administrator prompt.
+    ///
+    /// Skipped entirely when the installed helper is already **byte-identical** to the
+    /// bundled one and its version matches — the normal case — so no prompt appears and
+    /// nothing is restarted. That idempotence is what makes this safe to leave wired to
+    /// a button (and, later, to a startup check).
+    func syncBackgroundService() {
+        guard daemonSyncState != .working else { return }
+        guard let cli = SmartFanDaemon.embeddedCLIPath else {
+            daemonSyncState = .unavailable
+            return
+        }
+        if SmartFanDaemon.isInstalled,
+           SmartFanDaemon.installedHelper(isIdenticalTo: cli),
+           daemonVersionMismatch == nil,
+           !daemonUnreachable {
+            daemonSyncState = .succeeded
+            return
+        }
+
+        daemonSyncState = .working
+        let command = SmartFanDaemon.installShellCommand(cli: cli, ownerUID: Int(getuid()))
+        runWithAdministrator(SmartFanDaemon.appleScript(shellCommand: command)) { [weak self] ok in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.daemonSyncState = ok ? .succeeded : .failed
+                if ok {
+                    // Clear the stale signals now; the next heartbeat confirms for real.
+                    self.daemonUnreachable = false
+                } else {
+                    TFLogger.shared.error("Background service sync failed (declined or errored)")
+                }
+            }
+        }
+    }
+
     /// Force the root daemon to restart via launchd, from the "Restart daemon"
-    /// button on the unreachable banner. Runs OFF the main thread (it blocks on the
-    /// macOS auth dialog). Uses `launchctl kickstart -k` — the standard "restart
-    /// this service" — via an Authorization prompt: macOS shows the password dialog
-    /// and handles the credential; the app never sees it. On success the next
-    /// heartbeat clears `daemonUnreachable`.
+    /// button on the unreachable banner. On success the next heartbeat clears
+    /// `daemonUnreachable`.
     func restartDaemon() {
         let label = SmartFanDaemon.label
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Escaped for AppleScript's `do shell script`; the label is a fixed
-            // constant (no user input), so there's nothing untrusted to inject.
-            let script = "do shell script \"/bin/launchctl kickstart -k system/\(label)\" with administrator privileges"
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-            p.arguments = ["-e", script]
-            do {
-                try p.run()
-                p.waitUntilExit()
-                if p.terminationStatus == 0 {
-                    TFLogger.shared.info("Restart daemon: launchctl kickstart requested")
-                } else {
-                    // Non-zero includes the user cancelling the auth prompt (-128).
-                    TFLogger.shared.error("Restart daemon failed (osascript exit \(p.terminationStatus))")
-                }
-            } catch {
-                TFLogger.shared.error("Restart daemon failed to launch: \(error)")
+        // The label is a fixed constant, so there is nothing untrusted to inject.
+        runWithAdministrator(SmartFanDaemon.appleScript(
+            shellCommand: "/bin/launchctl kickstart -k system/\(label)")) { ok in
+            if ok {
+                TFLogger.shared.info("Restart daemon: launchctl kickstart requested")
+            } else {
+                TFLogger.shared.error("Restart daemon failed (declined or errored)")
             }
+        }
+    }
+
+    /// Run a shell command through the standard administrator prompt, off the main
+    /// thread: the dialog blocks until the user answers, and a non-zero status includes
+    /// the user cancelling (-128). The app never sees the credential.
+    private func runWithAdministrator(_ script: String, completion: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            process.arguments = ["-e", script]
+            var ok = false
+            do {
+                try process.run()
+                process.waitUntilExit()
+                ok = process.terminationStatus == 0
+                if !ok { TFLogger.shared.error("Administrator command failed (osascript exit \(process.terminationStatus))") }
+            } catch {
+                TFLogger.shared.error("Administrator command failed to launch: \(error)")
+            }
+            completion(ok)
         }
     }
 

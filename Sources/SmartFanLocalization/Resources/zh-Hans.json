@@ -24,7 +24,6 @@
   "Later": "稍后",
   "Fan control unavailable": "风扇控制不可用",
   "The background service isn't responding, so profiles and Default can't change the fans right now.": "后台服务无响应，模式和“默认”操作暂时无法调整风扇。",
-  "Restart daemon": "重启后台服务",
   "Asks for your password once. If it doesn't come back right away, it will keep retrying on its own.": "需要一次管理员授权。如果没有立即恢复，应用会继续自动重试。",
   "Language": "语言",
   "Version": "版本",
@@ -74,5 +73,11 @@
   "Fans are held at maximum. The app won't adjust them until you take over.": "风扇固定在最大转速。在你接管之前，应用不会调整。",
   "Fans are held at about {rpm} RPM. The app won't adjust them until you take over.": "风扇固定在约 {rpm} RPM。在你接管之前，应用不会调整。",
   "Fan {fan} is held at about {rpm} RPM. The app won't adjust fans until you take over.": "风扇 {fan} 固定在约 {rpm} RPM。在你接管之前，应用不会调整风扇。",
-  "Fans are held manually. The app won't adjust them until you take over.": "风扇被手动固定。在你接管之前，应用不会调整。"
+  "Fans are held manually. The app won't adjust them until you take over.": "风扇被手动固定。在你接管之前，应用不会调整。",
+  "Update the background service": "更新后台服务",
+  "Repair the background service": "修复后台服务",
+  "Working…": "处理中…",
+  "The background service is up to date.": "后台服务已是最新。",
+  "Couldn't update the background service.": "无法更新后台服务。",
+  "This build has no bundled background service; run the command below.": "本构建未内置后台服务；请运行下面的命令。"
 }

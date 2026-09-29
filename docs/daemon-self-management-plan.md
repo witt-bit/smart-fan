@@ -145,8 +145,15 @@ brew upgrade smart-fan     （或手动拖入新的 .app）
   - [x] `build-app --cli`：把 `smart-fan` 内嵌到 `Contents/MacOS/smart-fan`；`scripts/setup.sh` 与 `scripts/package-release.sh` 已传入
   - [x] `install` 识别「运行于哪个 bundle」（`SmartFanDaemon.enclosingBundle(of:)`，已单测）；源 bundle 已在 `/Applications` 时**不再自我复制**，但仍计入「本次装入了新 bundle」以走升级重启发路径
   - [ ] 移除 keg 再同步与「寻找匹配 app」旧逻辑（cask 下已是死代码；保留不影响，单独清理）
-- [ ] **P7.2 app 侧状态机**：缺失 / 落后 / 无响应 + 三个动作（各一次授权）+ 哈希幂等
-- [ ] **P7.3 横幅改按钮**：`DaemonUpdateBanner` / `DaemonDownBanner` 从「给命令」改为**可点动作**
+- [x] **P7.2 app 侧状态机**：缺失 / 落后 / 无响应 + 三个动作（各一次授权）+ 哈希幂等
+  - 完成：`app` 侧统一为一个动作 `syncBackgroundService()`，它自己判断该装/该换/该重启：
+    - Core：`SmartFanDaemon.isInstalled`、`embeddedCLIPath`（包内二进制；无包时返回 nil）、`installedHelper(isIdenticalTo:)`（SHA-256 幂等）、`installShellCommand(cli:ownerUID:)`（shell 引号）、`appleScript(shellCommand:)`（AppleScript 转义）
+    - `install --owner-uid`：app 经管理员授权调用时**没有 SUDO_UID**，改为显式传入（仍拒绝 0）
+    - `AppState.syncBackgroundService()`：**哈希相同且版本一致时完全跳过**（不复制/不重启/不弹窗）；否则一次 `osascript … with administrator privileges`
+    - `AppState.DaemonSyncState`（idle/working/succeeded/failed/unavailable）+ `backgroundServiceNeedsSync`
+    - 无包内二进制时置 `.unavailable`，UI 回退为显示命令（文档化的 fallback）
+- [x] **P7.3 横幅改按钮**
+  - 完成：`DaemonUpdateBanner`（关于页）从「去终端敲命令」改为 **「更新后台服务」按钮** + 状态行；`DaemonDownBanner`（风扇页）按钮改为 **「修复后台服务」**，也走同一个动作（install 会 bootout+bootstrap，所以“重启”被涵盖）。命令仅在 `.unavailable` 时显示。
 - [ ] **P7.4 分发**：cask 定义、CI 产物、README（用户流程去掉 `sudo … install`；CLI 挪到「开发与贡献」）
 - [ ] **P7.5 测试**：状态机与哈希幂等（纯逻辑）；身份测试已随 P7.1 更新
 
@@ -154,6 +161,8 @@ brew upgrade smart-fan     （或手动拖入新的 .app）
 
 ## 13. 开工状态
 
-P7.1 已完成主体：守护进程路径迁移、二进制内嵌、`install` 识别所在 bundle、自我复制防护、卸载脚本与身份测试同步。剩余：清理 cask 下已成死代码的 keg 再同步逻辑。
+P7.1、P7.2、P7.3 已完成。实测：`swift build` 无警告；**180 项测试**（+4）、断连客户端、本地化打包均通过。
 
-实测：`build-app --cli` 产出 `Contents/MacOS/{SmartFanApp,smart-fan}`，包内 CLI 可执行（`--version` → 1.0.0）；`swift build` 无警告；**176 项测试**、断连客户端、本地化打包均通过。
+**尚未实机验证**（需要交互式授权，无法自动化）：真实弹出管理员密码框并把 helper 装到 `/Library/PrivilegedHelperTools/`、以及升级后的重新同步。建议在 `bash scripts/setup.sh` 装好之后手测一次。
+
+剩余：P7.4（cask + CI + README）、P7.5（状态机测试）、以及清理 cask 下已成死代码的 keg 再同步逻辑。

@@ -24,7 +24,6 @@
   "Later": "Later",
   "Fan control unavailable": "Fan control unavailable",
   "The background service isn't responding, so profiles and Default can't change the fans right now.": "The background service isn't responding, so profiles and Default can't change the fans right now.",
-  "Restart daemon": "Restart daemon",
   "Asks for your password once. If it doesn't come back right away, it will keep retrying on its own.": "Asks for your password once. If it doesn't come back right away, it will keep retrying on its own.",
   "Language": "Language",
   "Version": "Version",
@@ -74,5 +73,11 @@
   "Fans are held at maximum. The app won't adjust them until you take over.": "Fans are held at maximum. The app won't adjust them until you take over.",
   "Fans are held at about {rpm} RPM. The app won't adjust them until you take over.": "Fans are held at about {rpm} RPM. The app won't adjust them until you take over.",
   "Fan {fan} is held at about {rpm} RPM. The app won't adjust fans until you take over.": "Fan {fan} is held at about {rpm} RPM. The app won't adjust fans until you take over.",
-  "Fans are held manually. The app won't adjust them until you take over.": "Fans are held manually. The app won't adjust them until you take over."
+  "Fans are held manually. The app won't adjust them until you take over.": "Fans are held manually. The app won't adjust them until you take over.",
+  "Update the background service": "Update the background service",
+  "Repair the background service": "Repair the background service",
+  "Working…": "Working…",
+  "The background service is up to date.": "The background service is up to date.",
+  "Couldn't update the background service.": "Couldn't update the background service.",
+  "This build has no bundled background service; run the command below.": "This build has no bundled background service; run the command below."
 }

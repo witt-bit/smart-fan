@@ -701,28 +701,43 @@ struct Install: ParsableCommand {
         abstract: "Install the background daemon (one-time, requires sudo)"
     )
 
+    @Option(name: .long, help: "User id the daemon should serve (defaults to SUDO_UID)")
+    var ownerUid: Int?
+
     func run() throws {
         guard geteuid() == 0 else {
             throw ValidationError("Run with sudo: sudo smart-fan install")
         }
 
-        // The daemon runs under launchd with no SUDO_UID of its own, so capture the
-        // controlling user here and bake it into the plist (1c). Absent means
-        // "already root, not via sudo" (a root shell) — refuse rather than default to
-        // 0, which would make the socket root-only and brick the user's app. A
-        // non-root user never reaches this line — the geteuid() guard above stops them.
-        guard let sudoUIDString = ProcessInfo.processInfo.environment["SUDO_UID"],
-              let ownerUID = Int(sudoUIDString), ownerUID != 0 else {
-            throw ValidationError("""
-                Can't determine who should own fan control: SUDO_UID isn't set.
-                Run the install with sudo from your normal user account:
+        // The daemon runs under launchd with no SUDO_UID of its own, so the controlling
+        // user's id is captured here and baked into the plist. `--owner-uid` is how the
+        // app passes it: it runs this command through an administrator prompt, which
+        // has no SUDO_UID. Otherwise it comes from the environment under sudo. Either
+        // way 0 is refused — that would make the socket root-only and brick the app.
+        let ownerUID: Int
+        if let ownerUid {
+            guard ownerUid != 0 else {
+                throw ValidationError(
+                    "--owner-uid must be a real user id, not 0 — installing as root would " +
+                    "lock every non-root account out of fan control."
+                )
+            }
+            ownerUID = ownerUid
+        } else {
+            guard let sudoUIDString = ProcessInfo.processInfo.environment["SUDO_UID"],
+                  let uid = Int(sudoUIDString), uid != 0 else {
+                throw ValidationError("""
+                    Can't determine who should own fan control: SUDO_UID isn't set.
+                    Run the install with sudo from your normal user account:
 
-                    sudo smart-fan install
+                        sudo smart-fan install
 
-                Don't run it from a root shell (su / sudo -i) — the daemon needs your
-                user's id so your app and CLI work without sudo. Installing as root
-                would lock every non-root account out of fan control.
-                """)
+                    Don't run it from a root shell (su / sudo -i) — the daemon needs your
+                    user's id so your app and CLI work without sudo. Installing as root
+                    would lock every non-root account out of fan control.
+                    """)
+            }
+            ownerUID = uid
         }
 
         let sourceBinary = URL(fileURLWithPath: ProcessInfo.processInfo.arguments[0]).resolvingSymlinksInPath()

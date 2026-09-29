@@ -67,6 +67,7 @@ struct ExternalHoldBanner: View {
 /// manual nudge for the rare stuck case; it never asks the user to reinstall.
 struct DaemonDownBanner: View {
     @EnvironmentObject var language: AppLanguageStore
+    let syncState: AppState.DaemonSyncState
     let onRestart: () -> Void
 
     var body: some View {
@@ -81,13 +82,16 @@ struct DaemonDownBanner: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Button(action: onRestart) {
-                Label(language.text("Restart daemon"), systemImage: "arrow.clockwise")
+                Label(language.text("Repair the background service"), systemImage: "arrow.clockwise")
                     .font(.caption.bold())
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
+            .disabled(syncState == .working)
             .padding(.top, 2)
+
+            DaemonSyncStatus(state: syncState)
 
             Text(language.text("Asks for your password once. If it doesn't come back right away, it will keep retrying on its own."))
                 .font(.caption2)
@@ -104,8 +108,13 @@ struct DaemonDownBanner: View {
 /// The background daemon is running a different build than the app. Persistent
 /// (no dismiss): a stale daemon should keep nagging until it is re-synced. Shown
 /// on the About page.
+///
+/// The action is the app's own: it installs/updates the helper with one administrator
+/// prompt. The command is only shown when the app has no bundled binary to install
+/// from (an unbundled development run), which is the documented fallback.
 struct DaemonUpdateBanner: View {
     @EnvironmentObject var language: AppLanguageStore
+    @EnvironmentObject var appState: AppState
     let daemonVersion: String
 
     var body: some View {
@@ -124,18 +133,60 @@ struct DaemonUpdateBanner: View {
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(language.text("Run this in Terminal:"))
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .padding(.top, 2)
-                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                appState.syncBackgroundService()
+            } label: {
+                Label(language.text("Update the background service"), systemImage: "arrow.down.circle")
+                    .font(.caption.bold())
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .disabled(appState.daemonSyncState == .working)
+            .padding(.top, 2)
 
-            CommandChip(command: "sudo smart-fan install")
+            DaemonSyncStatus(state: appState.daemonSyncState)
+
+            if appState.daemonSyncState == .unavailable {
+                Text(language.text("Run this in Terminal:"))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 2)
+                    .fixedSize(horizontal: false, vertical: true)
+                CommandChip(command: "sudo smart-fan install")
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.orange.opacity(0.12))
+    }
+}
+
+/// The result of the last sync attempt, shared by the two daemon banners.
+struct DaemonSyncStatus: View {
+    @EnvironmentObject var language: AppLanguageStore
+    let state: AppState.DaemonSyncState
+
+    var body: some View {
+        switch state {
+        case .idle:
+            EmptyView()
+        case .working:
+            Label(language.text("Working…"), systemImage: "hourglass")
+                .font(.caption2).foregroundStyle(.secondary)
+        case .succeeded:
+            Label(language.text("The background service is up to date."), systemImage: "checkmark.circle.fill")
+                .font(.caption2).foregroundStyle(.green)
+        case .failed:
+            Label(language.text("Couldn't update the background service."), systemImage: "exclamationmark.triangle.fill")
+                .font(.caption2).foregroundStyle(.red)
+                .fixedSize(horizontal: false, vertical: true)
+        case .unavailable:
+            Text(language.text("This build has no bundled background service; run the command below."))
+                .font(.caption2).foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 

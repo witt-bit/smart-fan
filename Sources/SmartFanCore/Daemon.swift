@@ -6,6 +6,7 @@
 //  Listens on a Unix socket so the app can control fans without sudo.
 //
 
+import CryptoKit
 import Darwin
 import Foundation
 import IOKit.pwr_mgt
@@ -41,6 +42,52 @@ public enum SmartFanDaemon {
             if url.path == "/" { return nil }
         }
         return nil
+    }
+
+    // MARK: - Self-management
+
+    /// Whether the helper binary is present, regardless of whether it is running: a
+    /// stopped or crash-looping job is still installed. `AppState` tells those apart.
+    public static var isInstalled: Bool {
+        FileManager.default.isExecutableFile(atPath: installPath)
+    }
+
+    /// The CLI/daemon binary embedded in this app bundle, if there is one.
+    ///
+    /// nil for an unbundled development run — the app then has no binary to install,
+    /// so the UI falls back to showing the command instead of running it.
+    public static var embeddedCLIPath: String? {
+        let path = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/smart-fan").path
+        return FileManager.default.isExecutableFile(atPath: path) ? path : nil
+    }
+
+    /// True when the installed helper is byte-identical to `source`, so the whole sync
+    /// — copy, restart and the administrator prompt — can be skipped. This is what
+    /// makes the app's own startup checks a no-op in the normal case.
+    public static func installedHelper(isIdenticalTo source: String) -> Bool {
+        guard let installed = sha256(ofFile: installPath),
+              let candidate = sha256(ofFile: source) else { return false }
+        return installed == candidate
+    }
+
+    static func sha256(ofFile path: String) -> SHA256Digest? {
+        FileManager.default.contents(atPath: path).map { SHA256.hash(data: $0) }
+    }
+
+    /// The shell command that installs `cli` as the daemon serving `ownerUID`.
+    /// Quoted for the shell — the app can live under a directory with spaces.
+    public static func installShellCommand(cli: String, ownerUID: Int) -> String {
+        let quoted = "'" + cli.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        return "\(quoted) install --owner-uid \(ownerUID)"
+    }
+
+    /// Wrap a shell command for `osascript`, which raises the standard administrator
+    /// prompt. The command is escaped for AppleScript's own string syntax.
+    public static func appleScript(shellCommand: String) -> String {
+        let escaped = shellCommand
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        return "do shell script \"\(escaped)\" with administrator privileges"
     }
 
     /// Check if the daemon socket exists and accepts connections
