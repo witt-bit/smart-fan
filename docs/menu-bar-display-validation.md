@@ -22,9 +22,8 @@ Label-geometry research this builds on: [menu-bar-label-validation.md](menu-bar-
 - `swift build` — clean, no warnings.
 - `swift test --no-parallel` — **142 tests in 23 suites**, Debug.
 - `swift test -c release --no-parallel` — same 142, Release.
-- `bash scripts/test-disconnected-clients.sh` — SIGPIPE regression passes.
-- `bash scripts/check-localization-package.sh` — bundling and missing-resource
-  protection pass.
+- `scripts/setup.sh test` — unit tests, the disconnected-clients SIGPIPE
+  regression, and the packaging resource checks.
 - `AppState(startServices: false)` is used for the offscreen panel test, so nothing
   in the automated suite touches SMC or starts a monitor.
 
@@ -68,9 +67,8 @@ Label-geometry research this builds on: [menu-bar-label-validation.md](menu-bar-
 
 ```bash
 swift build
-bash scripts/test.sh                          # Debug + disconnected clients
-swift test -c release --no-parallel           # Release
-bash scripts/check-localization-package.sh
+scripts/setup.sh test                # Debug: unit + socket + packaging
+scripts/setup.sh test --release      # same, Release build
 
 # Visual check, no services needed:
 .build/out/Products/Debug/SmartFanApp

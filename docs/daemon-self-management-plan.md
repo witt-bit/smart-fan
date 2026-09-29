@@ -141,8 +141,8 @@ brew upgrade smart-fan     （或手动拖入新的 .app）
 ## 12. 任务拆分
 
 - [ ] **P7.1 路径与打包**
-  - [x] `installPath` → `/Library/PrivilegedHelperTools/org.witt.smartfan.helper`（含 `scripts/uninstall.sh`、`ProductIdentityTests`）
-  - [x] `build-app --cli`：把 `smart-fan` 内嵌到 `Contents/MacOS/smart-fan`；`scripts/setup.sh` 与 `scripts/package-release.sh` 已传入
+  - [x] `installPath` → `/Library/PrivilegedHelperTools/org.witt.smartfan.helper`（含卸载脚本、`ProductIdentityTests`；卸载脚本后已并入 setup.sh）
+  - [x] `build-app --cli`：把 `smart-fan` 内嵌到 `Contents/MacOS/smart-fan`；`scripts/setup.sh` 已传入（CLI 收敛后由它统一驱动）
   - [x] `install` 识别「运行于哪个 bundle」（`SmartFanDaemon.enclosingBundle(of:)`，已单测）；源 bundle 已在 `/Applications` 时**不再自我复制**，但仍计入「本次装入了新 bundle」以走升级重启发路径
   - [ ] 移除 keg 再同步与「寻找匹配 app」旧逻辑（cask 下已是死代码；保留不影响，单独清理）
 - [x] **P7.2 app 侧状态机**：缺失 / 落后 / 无响应 + 三个动作（各一次授权）+ 哈希幂等

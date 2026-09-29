@@ -555,7 +555,7 @@ AppDelegate
 
 ```bash
 swift build && swift test
-bash scripts/check-localization-package.sh
+scripts/setup.sh test
 bash scripts/setup.sh      # 安装后手动验：菜单栏各样式 / 右键切模式 / 首选项各页
 ```
 

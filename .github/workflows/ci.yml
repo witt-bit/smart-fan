@@ -12,14 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build
-        run: swift build
+      # The wrapper owns the whole flow: unit tests, the socket regression and the
+      # packaging resource checks. Nothing here duplicates it.
+      - name: Test (debug)
+        run: bash scripts/setup.sh test
 
-      - name: Test Debug
-        run: bash scripts/test.sh
-
-      - name: Test Release
-        run: bash scripts/test.sh -c release
-
-      - name: Check localization packaging
-        run: bash scripts/check-localization-package.sh
+      - name: Test (release)
+        run: bash scripts/setup.sh test --release

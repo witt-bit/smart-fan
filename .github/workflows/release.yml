@@ -17,15 +17,13 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: test -s "docs/releases/${RELEASE_TAG#v}.md"
       - name: Test Debug
-        run: bash scripts/test.sh
+        run: bash scripts/setup.sh test
       - name: Test Release
-        run: bash scripts/test.sh -c release
+        run: bash scripts/setup.sh test --release
       - name: Build distribution
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-        run: bash scripts/package-release.sh
-      - name: Check packaged resources
-        run: bash scripts/check-localization-package.sh .build/release
+        run: bash scripts/setup.sh package
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
