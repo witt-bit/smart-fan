@@ -176,7 +176,10 @@ struct Auto: ParsableCommand {
         // Route through the daemon (coordinates its state, no sudo) when running;
         // resetAuto isn't a hold, so oneshot doesn't apply.
         let (route, _, _, _) = try FanCommandRouter.apply(.resetAuto, oneshot: false)
-        reportRoute(route)
+        // --stop-app is the step just before `sudo smart-fan install` during an update,
+        // where a newer CLI reaching the old daemon is expected; the plain mismatch
+        // nudge there reads like a failure. Other routes still report.
+        if case .daemon = route, stopApp {} else { reportRoute(route) }
         print(stopApp
             ? "Menu bar app stopped; fans reset to Apple defaults"
             : "Fans reset to Apple defaults")
@@ -1005,6 +1008,13 @@ struct Install: ParsableCommand {
                      executable or is crashing on launch. Open Console.app, search
                      "org.witt.smartfan.daemon", and check the most recent error.
                 """)
+        }
+
+        // A registered process/socket alone can belong to a stale daemon. Confirm the
+        // live protocol reports the version we just installed before claiming success.
+        let liveDaemon = try DaemonClient().request(DaemonRequest(verb: .version))
+        guard liveDaemon.ok, liveDaemon.version == installVersion else {
+            throw ValidationError("The live daemon did not confirm installed version \(installVersion). Re-run the installer; the service may still be restarting.")
         }
 
         // Copy the menu bar app into /Applications. Homebrew's post_install is

@@ -293,6 +293,7 @@ scripts/setup.sh package
 
 ### 文档与维护约定
 
+- [待办事项](docs/todo.md)：所有未完成、待决策、待清理事项的统一索引（开发前先看这个）。
 - [更新记录](CHANGELOG.md)：已发行版本的主要变化。
 - [发布说明规范与模板](docs/releases/README.md)：按版本维护发布说明、下载入口、升级提示和验证依据。
 - [0.2.3.15 验证记录](docs/smart-fan-0.2.3.15-validation.md)：发行产物、本机运行和未覆盖环境。
