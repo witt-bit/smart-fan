@@ -597,8 +597,7 @@ help | -h | --help) usage ;;
 version | -v | --version) cmd_version ;;
 *)
     warn "未知命令：$CMD"
-    say ""
-    usage
+    say "运行 scripts/setup.sh help 查看全部命令。"
     exit 1
     ;;
 esac
