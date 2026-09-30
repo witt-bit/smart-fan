@@ -123,22 +123,6 @@ struct FansPreferences: View {
                 rpmSlider
             }
 
-            HStack(spacing: 8) {
-                Toggle(isOn: Binding(
-                    get: { appState.activeProfile.id == "smart" },
-                    set: { $0 ? appState.setSmart() : appState.resetAuto() }
-                )) {
-                    Label(language.text("Smart"), systemImage: "fan.fill")
-                }
-                .toggleStyle(.button)
-                .tint(.orange)
-
-                Button { appState.resetAuto() } label: {
-                    Label(language.text("Default"), systemImage: "arrow.counterclockwise")
-                }
-                .buttonStyle(.bordered)
-            }
-
             Divider()
 
             // Live state: the mode above is the user's choice; this is what the

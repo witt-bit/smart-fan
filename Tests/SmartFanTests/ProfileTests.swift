@@ -36,9 +36,9 @@ struct ProfileTests {
 
     @Test("Built-in profiles have correct curve parameters")
     func builtInCurves() {
-        // Silent (Apple Default): hands-off
+        // Default (Apple auto): hands-off
         #expect(FanProfile.silent.curve.handsOff == true)
-        #expect(FanProfile.silent.name == "Silent (Apple Default)")
+        #expect(FanProfile.silent.name == "Default")
 
         // All active profiles share 50°C off threshold
         #expect(FanProfile.balanced.curve.stopTemp == 50)

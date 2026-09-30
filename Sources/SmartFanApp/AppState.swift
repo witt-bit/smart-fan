@@ -516,7 +516,7 @@ final class AppState: ObservableObject {
                 // here, on the daemon-confirmed success path, never on a failed reset.
                 self.persistSelectedProfile(FanProfile.silent.id)
                 self.monitor?.switchProfile(.silent, applied: self.reopenGate(press))
-                TFLogger.shared.profile("Reset to Default (Silent (Apple Default))")
+                TFLogger.shared.profile("Reset to Default (Apple auto)")
             }
         }
     }

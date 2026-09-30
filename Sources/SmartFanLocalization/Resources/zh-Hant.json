@@ -56,7 +56,6 @@
   "Sample Interval" : "採樣頻率",
   "Show RPM" : "顯示轉速",
   "Show Temperature" : "顯示溫度",
-  "Silent (Apple Default)" : "靜音（Apple 默認）",
   "Smart" : "智能",
   "SmartFan {version} is available. You have {appVersion}." : "SmartFan {version} 已發佈，當前版本為 {appVersion}。",
   "SmartFan: {reading}" : "SmartFan：{reading}",

@@ -169,10 +169,12 @@ public struct FanProfile: Codable, Identifiable, Equatable {
 // MARK: - Built-in Profiles
 
 extension FanProfile {
-    /// Silent (Apple Default): hands-off, let Apple control fans. SmartFan monitors only.
+    /// Default (Apple auto): hands-off, let Apple control fans — SmartFan monitors only.
+    /// Shown as "Default" in the UI: it is what the old Default button selected, and that
+    /// button is gone; the Apple-auto meaning is now carried by the name itself.
     public static let silent = FanProfile(
         id: "silent",
-        name: "Silent (Apple Default)",
+        name: "Default",
         curve: Curve(stopTemp: 50, startTemp: 55, ceilingTemp: 55,
                      maxRPMPercent: 0, handsOff: true)
     )
