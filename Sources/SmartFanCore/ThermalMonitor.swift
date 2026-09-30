@@ -195,12 +195,20 @@ public final class ThermalMonitor: @unchecked Sendable {
             profileGeneration += 1
             commandConfirmed = false
             failedCommand = nil
-            lastAppliedRPMPercent = 0
-            rampedRPMPercent = 0
+            // (B) Continue the ramp from where the fans actually are. Restarting at zero
+            // would command minimum RPM before climbing back, so choosing a mode could
+            // slow the fans down first — the opposite of what was asked for.
+            let current = currentAppliedFraction()
+            lastAppliedRPMPercent = current
+            rampedRPMPercent = current
             // Preserve needsRelease for an earlier write, but keep the new profile's
-            // own sustained-start timing and engagement state.
+            // own engagement state.
             fansCurrentlyRunning = false
-            sustainedAboveSeconds = 0
+            // (A) A mode chosen from the menu is explicit intent, not a transient spike.
+            // Treat the sustained window as already satisfied so the profile acts on the
+            // next tick whenever the temperature qualifies; the window still applies
+            // normally if the temperature later drops and has to rise again.
+            sustainedAboveSeconds = TimeInterval(profile.curve.sustainedTriggerSec)
             tickCounter = 0
 
             if profile.id == "smart" {
@@ -450,6 +458,14 @@ public final class ThermalMonitor: @unchecked Sendable {
         } else if fansCurrentlyRunning {
             state = .active(profileName: "Smart")
         }
+    }
+
+    /// The fans' current speed as a fraction of max, so a profile switch can continue
+    /// the ramp from reality instead of from zero. Zero when nothing is readable.
+    private func currentAppliedFraction() -> Float {
+        guard let status = try? fanControl.status(),
+              let fan = status.fans.first, fan.maxRPM > 0 else { return 0 }
+        return min(max(Float(fan.actualRPM) / Float(fan.maxRPM), 0), 1)
     }
 
     /// Temperature rate of change in °C per second (smoothed over history).

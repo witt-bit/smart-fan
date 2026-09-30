@@ -119,6 +119,14 @@ struct FansPreferences: View {
             }
             .labelsHidden()
 
+            if appState.modeSwitchWasRefused, let remaining = appState.modeSwitchCooldownRemaining {
+                Text(language.text("Just switched modes — {seconds}s before switching again. Default is always available.",
+                                   ["seconds": String(remaining)]))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             if appState.activeProfile.id == FanProfile.fixed.id {
                 rpmSlider
             }

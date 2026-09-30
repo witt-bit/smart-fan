@@ -32,6 +32,7 @@
   "General" : "通用",
   "Homepage" : "項目主頁",
   "Icon + Numbers" : "圖標 + 數字",
+  "Just switched modes — {seconds}s before switching again. Default is always available." : "剛切換過模式，請等 {seconds} 秒再切。「默認」不受限制。",
   "Language" : "語言",
   "Later" : "稍後",
   "Launch at Login" : "登錄時啓動",

@@ -512,7 +512,7 @@ struct MonitorRecoveryTests {
         #expect(!pending.contains { $0.0 == .resetAuto })
     }
 
-    @Test("Switching to Smart retains its sustained trigger while keeping the old release obligation")
+    @Test("Switching to Smart keeps the old release obligation, and skips the sustained window")
     func newProfileTiming() {
         let f = ControlFixture()
         let monitor = f.monitor(.balanced)
@@ -522,9 +522,12 @@ struct MonitorRecoveryTests {
         f.tick(monitor)
         monitor.switchProfile(.smart)
         f.smc.temperature = 60
+        // DELIBERATE DIVERGENCE from upstream: upstream restarts the sustained window on
+        // a switch and asserted `commands == [.setMax]` here (5 s < Smart's 6 s). This
+        // fork satisfies the window for a mode the user chose explicitly — waiting makes
+        // the switch look broken — so Smart engages at once. See ModeSwitchTests and
+        // docs/upstream-divergence.md.
         f.tick(monitor, count: 50)
-        #expect(commands == [.setMax])
-        f.tick(monitor, count: 15)
         #expect(commands.count > 1)
         f.smc.temperature = 49
         f.tick(monitor, count: 20)

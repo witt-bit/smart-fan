@@ -474,6 +474,7 @@ final class AppState: ObservableObject {
 
     func setSmart() {
         guard servicesEnabled else { return }
+        guard beginModeSwitch(to: .smart) else { return }
         let took = seizeControl()
         _ = profileSwitch.picked(handsOff: false)
         activeProfile = .smart
@@ -523,6 +524,7 @@ final class AppState: ObservableObject {
 
     func selectProfile(_ profile: FanProfile) {
         guard servicesEnabled else { return }
+        guard beginModeSwitch(to: profile) else { return }
         let took = seizeControl()
         let switchToken = profileSwitch.picked(handsOff: profile.curve.handsOff)
         activeProfile = profile
@@ -598,6 +600,31 @@ final class AppState: ObservableObject {
         case unavailable
     }
     @Published var daemonSyncState: DaemonSyncState = .idle
+
+    /// Minimum time between mode changes; see `ModeSwitchCooldown`.
+    static let modeSwitchCooldownSeconds: TimeInterval = 10
+    private var modeCooldown = ModeSwitchCooldown(duration: AppState.modeSwitchCooldownSeconds)
+
+    /// Set when a change was just refused, so the UI can explain why the picker snapped
+    /// back rather than leaving the click looking broken.
+    @Published private(set) var modeSwitchWasRefused = false
+
+    /// Seconds left before another controlling mode may be chosen, or nil when free.
+    var modeSwitchCooldownRemaining: Int? { modeCooldown.remaining(at: Date()) }
+
+    /// Gate a mode change and arm the cooldown on success. False when refused.
+    private func beginModeSwitch(to profile: FanProfile) -> Bool {
+        let now = Date()
+        guard modeCooldown.allows(profile.id, at: now) else {
+            modeSwitchWasRefused = true
+            TFLogger.shared.profile(
+                "Mode switch to \(profile.id) refused: \(modeCooldown.remaining(at: now) ?? 0)s of cooldown left")
+            return false
+        }
+        modeCooldown.armed(at: now)
+        modeSwitchWasRefused = false
+        return true
+    }
 
     /// True when the background service is not in the state this app needs: absent, a
     /// different build, or not answering. Drives the banner's action.

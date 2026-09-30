@@ -81,5 +81,6 @@
   "Up to date": "Up to date",
   "{version} available": "{version} available",
   "Couldn't reach GitHub": "Couldn't reach GitHub",
-  "Apple auto": "Apple auto"
+  "Apple auto": "Apple auto",
+  "Just switched modes — {seconds}s before switching again. Default is always available.": "Just switched modes — {seconds}s before switching again. Default is always available."
 }
