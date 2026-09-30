@@ -44,6 +44,33 @@
   - [ ] README 双语化（`b456b63`：英文 README + 中文版）
   - [ ] 刷新 README 截图（当前仍是 0.2.3.19 时期的菜单界面，且下拉菜单已下线，截图已不准确）
 
+### 批次 4 — 0.2.3.30 → 0.2.3.35（更新流程与分发）
+
+> **架构分歧（先说清楚）**：这一批是 **「脚本化更新」路线** —— 在线安装器 `curl | bash` + Homebrew formula/bottle + 应用里给命令去终端跑。
+> 我们的 **P7 是另一条路线**：app 内嵌守护进程、自己安装/升级、一次管理员授权、cask 分发。
+> 两者解决同一个问题，**大部分不可直接合并**；但其中几个独立修复值得取。
+
+- [x] **已合**（`46a02dd`）
+  - [x] `install` 完成后**校验活守护进程报告的版本**（否则可能“成功”但实际还是旧守护进程在服务）
+  - [x] `auto --stop-app` **不再打印版本不一致提示**（它是更新前一步，那条提示像失败）
+- [ ] ⬜ **待决策：在线安装器** `Scripts/install.sh`（182 行）+ `Scripts/test-installer.py`（259 行）
+  - 优点：`curl -fsSL .../releases/latest/download/install.sh | bash` 一条命令装完，服务**没有 Homebrew 的用户**
+  - 它做得相当严谨：拒绝 Rosetta/root shell、代理支持、Homebrew-aware（不悄悄切到手装）、SHA256 + 归档成员路径/类型校验（禁越界/符号链接/硬链接）、App 身份与严格签名校验、拒绝降级、先取得 sudo 再停应用、JSON 校验后清理
+  - 与我们冲突：它装的是 tar.gz 里的 CLI/daemon；我们已改为 app 内嵌二进制 + cask
+  - 值不值得移植？若不移植，无 Homebrew 的用户只能自己下载 `.app`
+- [ ] ⬜ **待决策：“Update in Terminal”**（写一个 `.command` 到用户私有临时目录，用 Terminal 打开执行）
+  - 这是他们给**app 自身更新**的答案（app 不会自我更新）；我们目前只显示命令文本
+  - 若我们要做「一键更新 app」，这是现成的安全实现（脚本随 app 签名、版本占位符在组装时替换）
+- [ ] ⬜ **待决策：安装来源探测 + 按来源给更新步骤**
+  - 机制：`installedWithHomebrew`（存在 keg 目录）+ `MacFanProSourceDirectory`（setup.sh 写进 Info.plist）
+  - 我们的映射应为：**cask / 源码 / 下载包** 三种
+  - 顺带：我们的关于页现在显示的更新命令（`brew upgrade smart-fan && sudo smart-fan install`）在 P7 之后**已经过时**（守护进程不再需要手动同步），需一并修正
+- [ ] ⬜ **Arabic + 从右到左（RTL）面板**（`ar.json` + AppLanguage）—— 同样受 §批次 3 的 27 键缺失问题阻塞
+- [ ] 🟠 **CI：发版后自动 bump 分发渠道**
+  - 上游用 `notify-tap.yml` 通知 Homebrew tap
+  - **我们是 cask，等价需求同样存在**：每次发版必须自动更新 cask 的版本与 `sha256`，否则用户 `brew upgrade` 拿不到新版
+  - 建议纳入 P7.4
+
 ## 3. 更新检查功能（Phase 1 剩余）
 
 详见 [update-check-plan.md](update-check-plan.md)。已完成：手动检查按钮、检查中状态、结果行（`8e4ee16`）。
