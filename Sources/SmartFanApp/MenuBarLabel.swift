@@ -109,8 +109,11 @@ enum MenuBarLabelImage {
     /// (plan §4 V4). The gap is squeezed first; text is never truncated.
     static let maximumWidth: CGFloat = 72
 
-    /// Width of the sparkline canvas (plan §4 V2/V4).
+    /// Width of the sparkline plot itself (plan §4 V2/V4).
     static let curveWidth: CGFloat = 40
+    /// Blank space either side of the plot. The curve is the whole item, so without it
+    /// it butts up against the neighbouring menu bar icons.
+    static let curveHorizontalPadding: CGFloat = 4
 
     /// One or more sparklines filling the menu bar height.
     ///
@@ -125,19 +128,25 @@ enum MenuBarLabelImage {
     static func makeCurve(curves: [(values: [Float], color: NSColor)],
                           needsWarning: Bool,
                           statusBarThickness: CGFloat = NSStatusBar.system.thickness) -> NSImage {
-        let size = NSSize(width: curveWidth, height: max(statusBarThickness, 14))
-        let inset: CGFloat = 1.5
+        let padding = curveHorizontalPadding
+        let size = NSSize(width: curveWidth + 2 * padding, height: max(statusBarThickness, 14))
+        let verticalInset: CGFloat = 1.5
         let image = NSImage(size: size, flipped: false) { _ in
-            let x0 = inset, x1 = size.width - inset
-            let y0 = inset, usable = size.height - 2 * inset
+            // The stroke's round cap extends half its width past an endpoint, so the
+            // plot is inset further than the padding: that keeps every pixel of ink
+            // inside the plot and the padding genuinely blank.
+            let capInset: CGFloat = 1
+            let x0 = padding + capInset, x1 = size.width - padding - capInset
+            let y0 = verticalInset, usable = size.height - 2 * verticalInset
 
-            // Scale reference: nothing to label in 22pt, so faint quarter lines.
+            // Scale reference: nothing to label in 22pt, so faint quarter lines. They
+            // span the plot, not the padding.
             let guides = NSBezierPath()
             guides.lineWidth = 0.5
             for fraction in [0.25, 0.5, 0.75] as [CGFloat] {
                 let y = y0 + usable * fraction
-                guides.move(to: NSPoint(x: 0, y: y))
-                guides.line(to: NSPoint(x: size.width, y: y))
+                guides.move(to: NSPoint(x: x0, y: y))
+                guides.line(to: NSPoint(x: x1, y: y))
             }
             NSColor.gray.withAlphaComponent(0.30).setStroke()
             guides.stroke()

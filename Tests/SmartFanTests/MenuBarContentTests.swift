@@ -238,7 +238,7 @@ struct MenuBarContentTests {
         let empty = MenuBarLabelImage.makeCurve(curves: [(values: [], color: .systemOrange)],
                                                 needsWarning: false, statusBarThickness: 22)
         #expect(!empty.isTemplate)   // coloured, so never a template
-        #expect(empty.size.width == MenuBarLabelImage.curveWidth)
+        #expect(empty.size.width == MenuBarLabelImage.curveWidth + 2 * MenuBarLabelImage.curveHorizontalPadding)
         #expect(empty.size.height == 22)
         #expect(empty.size.width <= MenuBarLabelImage.maximumWidth)
 
@@ -246,7 +246,7 @@ struct MenuBarContentTests {
         for values: [Float] in [[], [50], [1, 2, 3, 4, 5, 6, 7, 8], [10, 10, 10]] {
             let image = MenuBarLabelImage.makeCurve(curves: [(values, .systemTeal)],
                                                     needsWarning: false, statusBarThickness: 24)
-            #expect(image.size.width == MenuBarLabelImage.curveWidth)
+            #expect(image.size.width == MenuBarLabelImage.curveWidth + 2 * MenuBarLabelImage.curveHorizontalPadding)
             #expect(image.size.height == 24)
         }
 
@@ -257,5 +257,43 @@ struct MenuBarContentTests {
                                                     needsWarning: warning, statusBarThickness: 24)
             #expect(!image.isTemplate)
         }
+    }
+}
+
+@Suite("Curve canvas keeps clear of its neighbours")
+@MainActor
+struct CurvePaddingTests {
+    @Test("The curve leaves blank space either side, and the plot between it is drawn")
+    func horizontalPadding() throws {
+        let image = MenuBarLabelImage.makeCurve(
+            curves: [(values: [0, 50, 100, 20, 80], color: .systemOrange)],
+            needsWarning: false, statusBarThickness: 22)
+        let scale = 2
+        let bitmap = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: Int(image.size.width) * scale,
+            pixelsHigh: Int(image.size.height) * scale, bitsPerSample: 8,
+            samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        bitmap.size = image.size
+        let context = try #require(NSGraphicsContext(bitmapImageRep: bitmap))
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        NSGraphicsContext.current = context
+        image.draw(in: NSRect(origin: .zero, size: image.size))
+        context.flushGraphics()
+
+        func ink(_ columns: Range<Int>) -> Int {
+            var count = 0
+            for x in columns {
+                for y in 0..<bitmap.pixelsHigh
+                where (bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.1 { count += 1 }
+            }
+            return count
+        }
+        let blank = Int(ceil(MenuBarLabelImage.curveHorizontalPadding)) * scale
+        #expect(ink(0..<blank) == 0, "left padding is not blank")
+        #expect(ink((bitmap.pixelsWide - blank)..<bitmap.pixelsWide) == 0, "right padding is not blank")
+        // The plot between them must have ink, so this cannot pass on a blank image.
+        #expect(ink(blank..<(bitmap.pixelsWide - blank)) > 0)
     }
 }
