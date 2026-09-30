@@ -2,14 +2,77 @@
 
 ## 1.0.0
 
-- **Customisable menu bar.** Four styles: icon + numbers (temperature above, RPM below, each independently on/off), temperature curve, RPM curve, and both curves overlaid. Each curve is normalised to its own range, so a temperature and an RPM curve share one canvas.
-- **New metrics.** Average temperature (mean of every sensor, battery included), and a feels-like temperature (the battery sensor). The menu bar RPM is the average of the fans that actually read.
-- **Preferences window replaces the dropdown.** The app now uses a custom status item: **left click** opens the preferences window (Fans / General / Menu Bar / About), **right click** shows Preferences… / every mode / Quit. `MenuBarExtra` could not tell the two clicks apart.
-- **Fixed Rate mode.** Hold the fans at a chosen RPM with a slider over the fan's own range, on a par with the temperature modes; the choice and the RPM are remembered across launches.
-- **Alerts.** A stale or unreachable background service, or a terminal hold, is reported in the window, and the menu bar icon turns red while one is active. Update-needed and update-available moved to the About page.
-- Rename the project to SmartFan. The repository and package are `smart-fan`, the CLI command is `smart-fan`, the app bundle is `SmartFan.app`, the modules are `SmartFanCore` / `SmartFanApp` / `SmartFanLocalization`, and the bundle identity is `org.witt.smartfan.*`. Paths follow: socket `/var/run/smart-fan.sock`, install path `/usr/local/bin/smart-fan`, user data and logs under `~/Library/.../SmartFan/`.
-- Remove the ThermalForge / MacFanPro migration path. This is an independent package with its own identity; there is nothing to migrate.
-- Consolidate the shell scripts under `scripts/`, including `scripts/setup.sh` and `scripts/uninstall.sh`, and unify their shebang to `#!/usr/bin/env bash`.
-- Reissue the LICENSE as MIT, keeping the upstream ThermalForge and MacFanPro copyright notices alongside the SmartFan copyright. Git history and all upstream attribution (NOTICE.md, ThirdPartyNotices/) are retained.
+First release under the SmartFan name. Built on ThermalForge 0.2.3 plus the MacFanPro
+0.2.3.20-0.2.3.29 fixes.
+
+### Menu bar
+
+- **Four display styles.** **Numbers** (the icon, with the temperature above and the RPM
+  below; either can be shown alone, or both off for the icon alone), **temperature curve**,
+  **RPM curve**, and **both curves** in their own bands. Each curve is normalised to its own
+  range: the two metrics have different units, so one shared scale would be meaningless, and
+  correlated readings would otherwise hide one curve behind the other.
+- **New metrics.** Average temperature (the mean of every sensor, battery included) and a
+  feels-like temperature (the battery sensor). The menu bar RPM is the average of the fans
+  that actually read.
+- **Configurable** temperature metric, unit granularity, sampling interval (1-10 s) and
+  window (10 s - 3 min), with a live preview of the real menu bar item. The curve canvas
+  keeps blank space either side so it does not crowd the neighbouring icons.
+
+### Preferences window
+
+- **The dropdown is gone.** Left click opens the preferences window (Fans / General / Menu
+  Bar / About); right click shows Preferences… / every mode / Quit. `MenuBarExtra` cannot
+  tell a left click from a right click.
+- **One place to choose a mode.** The hands-off profile is labelled **Default** — it hands
+  the fans back to Apple — and the separate Smart and Default buttons are gone.
+- **Fixed Rate**: hold the fans at a chosen RPM with a slider over the fan's own range, on a
+  par with the temperature modes. The choice and the RPM survive a relaunch.
+- **Check for Updates** on the About page, reporting inline whether the build is up to date,
+  a version is available, or GitHub could not be reached.
+- **Status says who controls the fans** — the profile name, SAFETY, Fixed Rate, or Apple
+  auto — instead of the monitor's own idle state, which read as "the fan is idle" beside a
+  spinning fan.
+- The temperature unit is a checkbox that says what it does: **Use °F**.
+- Switching modes **acts at once** rather than waiting out the sustained window (4-8 s), the
+  ramp **continues from the fans' current speed** instead of dropping to minimum first, and
+  a **10 s cooldown** stops modes being flipped back and forth. Default is exempt: it is the
+  escape hatch when the fans are loud.
+
+### Background service
+
+- **The app manages it.** A missing, outdated or unresponsive service is installed, updated
+  or restarted from the app with a single administrator prompt, with no terminal commands.
+  The installed helper is compared by SHA-256, so nothing is copied, restarted or asked for
+  when it is already current.
+- The service binary moved out of `/usr/local/bin` to
+  **`/Library/PrivilegedHelperTools/org.witt.smartfan.helper`** — root-owned and off `PATH` —
+  and the `smart-fan` CLI now ships **inside the app bundle**, for development only.
+- Alerts for a stale or unreachable service, or a terminal hold, appear in the window, and
+  the menu bar icon turns red while one is active.
+
+### Fan control
+
+- Ported from MacFanPro 0.2.3.20-0.2.3.29: calibration written as the invoking user
+  (`sudo calibrate` used to write to root's home, so Smart never loaded it) and reading the
+  CPU+GPU safety peak; per-fan range clamping; the profile-switch ordering gate; write-failure
+  recovery; watchdog and thermal-floor lock ordering; the 95 °C-until-90 °C hysteresis; and
+  the `auto-if-app` conditional release.
+- The update check follows the public `/releases/latest` redirect instead of the REST API,
+  which allows only 60 requests an hour per IP and is often exhausted behind shared proxies.
+
+### Project
+
+- Renamed from MacFanPro. The repository and package are `smart-fan`, the CLI command is
+  `smart-fan`, the app bundle is `SmartFan.app`, the modules are `SmartFanCore` /
+  `SmartFanApp` / `SmartFanLocalization`, and the bundle identity is
+  `org.witt.smartfan.*`. User data and logs live under `~/Library/.../SmartFan/`.
+- `scripts/setup.sh` is the single entry point: build, run, test, install, uninstall,
+  open/quit/restart, package, icon, translations, CLI passthrough, logs, diagnosis and
+  cleanup. Every script it absorbed was removed rather than duplicated.
+- Removed the ThermalForge / MacFanPro migration path: this is an independent package.
+- Reissued the LICENSE as MIT, keeping the upstream ThermalForge and MacFanPro copyright
+  notices alongside the SmartFan copyright. Git history and all upstream attribution
+  (NOTICE.md, ThirdPartyNotices/) are retained.
 
 ## 0.2.3.19
