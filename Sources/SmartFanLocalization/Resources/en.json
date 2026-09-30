@@ -11,7 +11,6 @@
   "Launch at Login": "Launch at Login",
   "Quit": "Quit",
   "SAFETY": "SAFETY",
-  "Idle": "Idle",
   "Update needed": "Update needed",
   "The background service is running {daemonVersion}, but the app is {appVersion}. Fan control may not match what you set until they're re-synced.": "The background service is running {daemonVersion}, but the app is {appVersion}. Fan control may not match what you set until they're re-synced.",
   "Run this in Terminal:": "Run this in Terminal:",
@@ -81,5 +80,6 @@
   "This build has no bundled background service; run the command below.": "This build has no bundled background service; run the command below.",
   "Up to date": "Up to date",
   "{version} available": "{version} available",
-  "Couldn't reach GitHub": "Couldn't reach GitHub"
+  "Couldn't reach GitHub": "Couldn't reach GitHub",
+  "Apple auto": "Apple auto"
 }

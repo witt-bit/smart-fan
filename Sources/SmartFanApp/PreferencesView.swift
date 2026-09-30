@@ -190,8 +190,17 @@ struct FansPreferences: View {
             Label(language.text(name), systemImage: "fan.fill")
                 .foregroundStyle(.orange)
         case .idle:
-            Label(language.text("Idle"), systemImage: "fan")
-                .foregroundStyle(.secondary)
+            // The monitor is not driving the fans — say who is. "Idle" next to a spinning
+            // fan reading reads as "the fan is idle", when it only meant this app is not
+            // the one setting the speed. Fixed Rate is the one case where the app still
+            // holds the fans even though the monitor's tick does nothing.
+            if appState.activeProfile.id == FanProfile.fixed.id {
+                Label(language.text("Fixed Rate"), systemImage: "fan.fill")
+                    .foregroundStyle(.orange)
+            } else {
+                Label(language.text("Apple auto"), systemImage: "fan")
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

@@ -11,7 +11,6 @@
   "Launch at Login": "登录时启动",
   "Quit": "退出",
   "SAFETY": "安全保护",
-  "Idle": "空闲",
   "Update needed": "需要更新",
   "The background service is running {daemonVersion}, but the app is {appVersion}. Fan control may not match what you set until they're re-synced.": "后台服务版本为 {daemonVersion}，应用版本为 {appVersion}。同步版本前，风扇控制可能与你的设置不一致。",
   "Run this in Terminal:": "在终端中运行：",
@@ -81,5 +80,6 @@
   "This build has no bundled background service; run the command below.": "本构建未内置后台服务；请运行下面的命令。",
   "Up to date": "已是最新",
   "{version} available": "有 {version} 可用",
-  "Couldn't reach GitHub": "无法连接 GitHub"
+  "Couldn't reach GitHub": "无法连接 GitHub",
+  "Apple auto": "Apple 自动"
 }
