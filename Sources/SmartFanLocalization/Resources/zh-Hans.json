@@ -28,7 +28,6 @@
   "Follow System": "跟随系统",
   "Temperature unavailable": "温度不可用",
   "SmartFan: {reading}": "SmartFan：{reading}",
-  "°F / °C": "°F / °C",
   "CPU": "CPU",
   "GPU": "GPU",
   "RAM": "RAM",
@@ -82,5 +81,6 @@
   "{version} available": "有 {version} 可用",
   "Couldn't reach GitHub": "无法连接 GitHub",
   "Apple auto": "Apple 自动",
-  "Just switched modes — {seconds}s before switching again. Default is always available.": "刚切换过模式，请等 {seconds} 秒再切。「默认」不受限制。"
+  "Just switched modes — {seconds}s before switching again. Default is always available.": "刚切换过模式，请等 {seconds} 秒再切。「默认」不受限制。",
+  "Use °F": "使用 °F"
 }

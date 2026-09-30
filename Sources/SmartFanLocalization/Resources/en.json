@@ -28,7 +28,6 @@
   "Follow System": "Follow System",
   "Temperature unavailable": "Temperature unavailable",
   "SmartFan: {reading}": "SmartFan: {reading}",
-  "°F / °C": "°F / °C",
   "CPU": "CPU",
   "GPU": "GPU",
   "RAM": "RAM",
@@ -82,5 +81,6 @@
   "{version} available": "{version} available",
   "Couldn't reach GitHub": "Couldn't reach GitHub",
   "Apple auto": "Apple auto",
-  "Just switched modes — {seconds}s before switching again. Default is always available.": "Just switched modes — {seconds}s before switching again. Default is always available."
+  "Just switched modes — {seconds}s before switching again. Default is always available.": "Just switched modes — {seconds}s before switching again. Default is always available.",
+  "Use °F": "Use °F"
 }

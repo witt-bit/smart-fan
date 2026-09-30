@@ -249,7 +249,9 @@ struct GeneralPreferences: View {
                 .fixedSize()
             }
 
-            Toggle(language.text("°F / °C"), isOn: $appState.useFahrenheit)
+            // "°F / °C" did not say what checking it did; the box means "show Fahrenheit"
+            // in the menu bar and every temperature row.
+            Toggle(language.text("Use °F"), isOn: $appState.useFahrenheit)
             Toggle(language.text("Launch at Login"), isOn: $appState.launchAtLogin)
         }
     }
