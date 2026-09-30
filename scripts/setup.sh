@@ -58,6 +58,28 @@ require_cmd() {
     command -v "$1" >/dev/null 2>&1 || die "找不到命令 '$1'。$2"
 }
 
+# SwiftPM hands the linker -F/-L paths that exist only under a full Xcode. With the
+# CommandLineTools selected, ld warns once per missing path:
+#   ld: warning: search path '/Library/Developer/CommandLineTools/Developer/...' not found
+# That says nothing about this project, so it is dropped. Every other line passes
+# through, and a real linker error is not a "search path" warning.
+filter_toolchain_noise() {
+    # `|| true`: grep -v exits 1 when it outputs nothing, which under `set -e` would
+    # abort a successful build whose only stderr was this noise.
+    grep -v -E "ld: warning: search path '.*' not found" || true
+}
+
+# Run a swift command with its stderr buffered so the linker noise can be dropped.
+# stdout (build progress) still streams. Returns the command's own status.
+run_swift() {
+    local log status=0
+    log="$(mktemp "${TMPDIR:-/tmp}/smart-fan-swift.XXXXXX")"
+    if ! "$@" 2>"$log"; then status=1; fi
+    filter_toolchain_noise <"$log" >&2
+    rm -f "$log"
+    return $status
+}
+
 # Ask before something destructive. Honours --yes.
 confirm() {
     [ "$ASSUME_YES" = 1 ] && return 0
@@ -97,11 +119,11 @@ run_build() { # <debug|release>
     require_cmd swift "请先安装 Xcode 命令行工具：xcode-select --install"
     step "编译 ($1)"
     if [ "$VERBOSE" = 1 ]; then
-        swift build -c "$1"
+        run_swift swift build -c "$1"
     else
-        # Keep stderr (real errors), drop the progress noise — here building is a
-        # step on the way to something else.
-        swift build -c "$1" >/dev/null
+        # Building here is a step on the way to something else, so stdout progress
+        # is dropped too (stderr is filtered and kept).
+        run_swift swift build -c "$1" >/dev/null
     fi
 }
 
@@ -135,7 +157,7 @@ run_unit_tests() { # <debug|release>
     require_cmd swift "请先安装 Xcode 命令行工具：xcode-select --install。"
     step "单元测试 ($cfg)"
     # shellcheck disable=SC2046
-    swift test -c "$cfg" --no-parallel $(swift_test_args)
+    run_swift swift test -c "$cfg" --no-parallel $(swift_test_args)
 }
 
 run_disconnected_clients() {
@@ -195,7 +217,7 @@ cmd_build() {
     [ "${1:-}" = "release" ] && cfg="release"
     require_cmd swift "请先安装 Xcode 命令行工具：xcode-select --install"
     step "编译 ($cfg)"
-    swift build -c "$cfg"          # compiling is the point here: show the output
+    run_swift swift build -c "$cfg"   # compiling is the point here: show the output
     ok "编译完成（$cfg）"
 }
 
@@ -479,7 +501,7 @@ cmd_l10n() {
     step "从简体中文重新生成繁体中文"
     swift "$REPO_ROOT/scripts/update-traditional.swift"
     step "校验三语言键一致"
-    swift test --filter LocalizationTests --no-parallel $(swift_test_args)
+    run_swift swift test --filter LocalizationTests --no-parallel $(swift_test_args)
     ok "本地化已更新并通过校验"
 }
 
