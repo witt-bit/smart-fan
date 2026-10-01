@@ -90,12 +90,20 @@ final class StatusItemController {
     /// Pop `menu` at the item, then clear it so a later left click opens the
     /// preferences window instead of re-showing the menu.
     func showMenu(_ menu: NSMenu) {
-        guard !isShowingMenu else { return }
+        guard !isShowingMenu, let button = statusItem.button else { return }
         isShowingMenu = true
-        defer { isShowingMenu = false }
+        defer {
+            isShowingMenu = false
+            statusItem.menu = nil
+            // Assigning `statusItem.menu` makes AppKit treat a click as "show the menu"
+            // rather than sending the button's action. Clearing it is meant to restore the
+            // action; re-asserting it is cheap and removes the doubt.
+            button.target = self
+            button.action = #selector(handleClick)
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
         statusItem.menu = menu
-        statusItem.button?.performClick(nil)
-        statusItem.menu = nil
+        button.performClick(nil)
     }
 
     // MARK: - Rendering

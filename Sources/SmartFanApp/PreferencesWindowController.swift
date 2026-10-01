@@ -35,10 +35,11 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
     }
 
     func show() {
-        // `activate()` (macOS 14+) rather than the deprecated
-        // `activate(ignoringOtherApps:)`.
-        NSApp.activate()
+        // Order front before activating, and activate ignoring other apps: until this window
+        // exists and can become key, `NSApp.activate()` is a no-op for an accessory app, and
+        // the window is left behind whatever is frontmost.
         window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     /// A check result belongs to the viewing that produced it. Closing the window
