@@ -275,8 +275,6 @@ struct GeneralPreferences: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(language.text("General")).font(.headline)
-
             HStack {
                 Text(language.text("Language"))
                 Spacer()
@@ -392,7 +390,10 @@ private struct MenuBarPreview: View {
             colorScheme: colorScheme,
             statusBarThickness: NSStatusBar.system.thickness))
         .frame(height: NSStatusBar.system.thickness)
-        .padding(.horizontal, 6)
+        // Hug the image: the curve canvas already keeps 4pt blank either side (so it never
+        // butts against the neighbouring menu bar icons), and 6pt more inside the box read
+        // as a wide margin around a 48pt image.
+        .padding(.horizontal, 2)
         .background(RoundedRectangle(cornerRadius: 5).fill(Color.secondary.opacity(0.18)))
     }
 }
@@ -428,7 +429,8 @@ struct AboutPreferences: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(language.text("About")).font(.headline)
+            // No page title: the sidebar already names the page, and repeating it only
+            // pushed the content down. Same on the General page.
 
             // Both update banners live here (decided in the plan): the About page
             // is where a user goes to find out about versions.
