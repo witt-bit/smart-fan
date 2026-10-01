@@ -40,13 +40,24 @@ struct HighTempProtectionTests {
         #expect(ladder.stage == .halfSpeed)
     }
 
-    @Test("A single tick below the entry point restarts the hold")
-    func dipRestartsEntry() {
+    @Test("A dip shorter than the tolerance does not restart the entry hold")
+    func shortDipDoesNotRestartEntry() {
+        var ladder = HighTempProtection()
+        _ = advance(&ladder, temp: 90, seconds: 6)
+        _ = advance(&ladder, temp: 85, seconds: 1)   // well inside the tolerance
+        // The six seconds already counted still count: four more finish the ten.
+        #expect(advance(&ladder, temp: 90, seconds: 3) == .none)
+        #expect(ladder.stage == .off)
+        #expect(advance(&ladder, temp: 90, seconds: 1) == .halfSpeed)
+    }
+
+    @Test("A dip longer than the tolerance restarts the hold")
+    func longDipRestartsEntry() {
         var ladder = HighTempProtection()
         _ = advance(&ladder, temp: 90, seconds: 9.5)
-        _ = advance(&ladder, temp: 85, seconds: step)
-        #expect(advance(&ladder, temp: 90, seconds: 9) == .none)
+        _ = advance(&ladder, temp: 85, seconds: HighTempProtection.dipTolerance + 0.5)
         #expect(ladder.stage == .off)
+        #expect(advance(&ladder, temp: 90, seconds: 9) == .none)
         #expect(advance(&ladder, temp: 90, seconds: 1) == .halfSpeed)
     }
 
@@ -171,14 +182,34 @@ struct HighTempProtectionTests {
         #expect(ladder.stage == .off)
     }
 
-    @Test("A dropped reading cancels an in-progress escalation")
-    func droppedReadingCancelsEscalation() {
+    @Test("A brief dip does not cancel an in-progress escalation")
+    func briefDipKeepsEscalation() {
         var ladder = HighTempProtection()
         engagedAtHalfSpeed(&ladder)
         _ = advance(&ladder, temp: 95, seconds: 25)
-        _ = advance(&ladder, temp: 88, seconds: 1)   // below 95: the 30 s restarts
+        _ = advance(&ladder, temp: 88, seconds: 2)   // inside the tolerance: the 25 s still count
+        #expect(advance(&ladder, temp: 95, seconds: 5) == .fullSpeed)
+        #expect(ladder.stage == .fullSpeed)
+    }
+
+    @Test("A reading that stays down cancels an in-progress escalation")
+    func longDropCancelsEscalation() {
+        var ladder = HighTempProtection()
+        engagedAtHalfSpeed(&ladder)
+        _ = advance(&ladder, temp: 95, seconds: 25)
+        _ = advance(&ladder, temp: 88, seconds: HighTempProtection.dipTolerance + 1)
         #expect(advance(&ladder, temp: 95, seconds: 25) == .none)
         #expect(ladder.stage == .halfSpeed)
         #expect(advance(&ladder, temp: 95, seconds: 5) == .fullSpeed)
+    }
+
+    @Test("A hold counts time above the line, not wall time")
+    func holdCountsOnlyTimeAboveTheLine() {
+        var ladder = HighTempProtection()
+        // Alternate above and below the entry point: 40 s of wall time is 20 s of 90 °C,
+        // which is enough — spending half the time below just takes twice as long.
+        for _ in 0..<40 { _ = advance(&ladder, temp: 90, seconds: 0.5)
+                          _ = advance(&ladder, temp: 80, seconds: 0.5) }
+        #expect(ladder.stage == .halfSpeed)
     }
 }

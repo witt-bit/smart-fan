@@ -112,6 +112,8 @@
 详见 [high-temp-protection-plan.md](high-temp-protection-plan.md)。
 
 - [x] **阶梯取代单阈值** —— 90°C/10s → 50%，95°C/30s → 100%，每级至少保持 30 秒；下阶梯同样分级
+- [x] **掉档宽限 3 秒** —— 单次采样掉线不再作废窗口；只累计真正在阈值以上的时间
+      （实测回放：100ms 级抖动下满速可达；97–100°C 时 30 秒准时升级）
 - [x] **两个开关**（风扇页）—— 「高温防护」（默认开，关 = 永不启用）、「在默认模式也生效」（默认关）
 - [x] **守护进程兜底阈值 95 → 105**（`emergencyTempThreshold`）—— 高于阶梯范围与其 30 秒升级窗口，避免抢同一个风扇
 - [x] 测试：`HighTempProtectionTests`（16 项纯逻辑）+ `ControlLoopRecoveryTests` 重写 + `DaemonInvariantsTests`

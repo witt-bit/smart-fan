@@ -46,7 +46,9 @@ First release under the SmartFan name. Built on ThermalForge 0.2.3 plus the MacF
   down the same way once each step has been held for thirty seconds. The old behaviour
   maxed the fans on one reading and released them on one reading, and a die sensor that
   swings several degrees per second crossed both lines repeatedly — the fans spun for a
-  few seconds and stopped again, over and over.
+  few seconds and stopped again, over and over. Each step also tolerates dips of up to
+  three seconds: one 100 ms sample below the line no longer discards a nearly-complete
+  window.
 - **Two switches**, on the Fans page: **High-temperature protection** (on by default;
   off means it never runs) and **Also in Default mode** (off by default, because Default
   means the fans belong to the system, not to a second controller fighting it).

@@ -71,6 +71,15 @@ public struct HighTempProtection {
     public static let fullHold: TimeInterval = 30
     /// Minimum time each step is held before it may step down again.
     public static let stepHold: TimeInterval = 30
+    /// How long the reading may sit below a threshold before that hold restarts.
+    ///
+    /// Without it a single 100 ms sample below the line threw away a nearly-complete
+    /// window: the measured die reading on this M4 moves 6–11 °C in two seconds, so
+    /// "30 consecutive seconds" was effectively unreachable and the ladder never left
+    /// half speed. A hold now measures the time the reading has actually spent at or
+    /// above its threshold, and only restarts once the reading has been below it for
+    /// longer than this.
+    public static let dipTolerance: TimeInterval = 3
     /// Accumulated 100 ms ticks do not land exactly on a boundary — 0.1 has no exact
     /// binary form, so a hundred of them sum a hair under 10 — and a hold must be met
     /// on the tick the user's number says, not one tick later.
@@ -78,11 +87,39 @@ public struct HighTempProtection {
 
     // MARK: - State
 
+    /// How much of the recent past the reading has spent at or above a threshold.
+    /// Dips shorter than `dipTolerance` are ignored; only the time actually at or above
+    /// the threshold is counted, so a reading that spends half its time below the line
+    /// takes twice as long to satisfy a hold.
+    private struct Hold {
+        private(set) var accumulated: TimeInterval = 0
+        private var belowFor: TimeInterval = 0
+
+        mutating func advance(temp: Float, threshold: Float, elapsed: TimeInterval) {
+            guard temp < threshold else {
+                accumulated += elapsed
+                belowFor = 0
+                return
+            }
+            belowFor += elapsed
+            if belowFor > HighTempProtection.dipTolerance { accumulated = 0 }
+        }
+
+        func reached(_ hold: TimeInterval) -> Bool {
+            accumulated >= hold - HighTempProtection.tolerance
+        }
+
+        mutating func reset() {
+            accumulated = 0
+            belowFor = 0
+        }
+    }
+
     public private(set) var stage: Stage = .off
-    /// Time at or above `startTemp`, reset the moment it drops below.
-    private var aboveStart: TimeInterval = 0
-    /// Time at or above `fullTemp`, reset the moment it drops below.
-    private var aboveFull: TimeInterval = 0
+    /// Time at or above `startTemp`.
+    private var aboveStart = Hold()
+    /// Time at or above `fullTemp`.
+    private var aboveFull = Hold()
     /// Time spent in the current step.
     private var inStage: TimeInterval = 0
 
@@ -107,22 +144,21 @@ public struct HighTempProtection {
             return wasEngaged ? .stop : .none
         }
 
-        // Held readings, not single samples: a reading that dips for one tick does not
-        // restart the climb.
-        aboveStart = temp >= Self.startTemp ? aboveStart + elapsed : 0
-        aboveFull = temp >= Self.fullTemp ? aboveFull + elapsed : 0
+        // Held readings, not single samples: a brief dip does not restart the climb.
+        aboveStart.advance(temp: temp, threshold: Self.startTemp, elapsed: elapsed)
+        aboveFull.advance(temp: temp, threshold: Self.fullTemp, elapsed: elapsed)
         inStage += elapsed
 
         switch stage {
         case .off:
-            guard aboveStart >= Self.startHold - Self.tolerance else { return .none }
+            guard aboveStart.reached(Self.startHold) else { return .none }
             stage = .halfSpeed
             inStage = 0
             return .halfSpeed
 
         case .halfSpeed:
             // Escalate: the half-speed step is not holding the temperature.
-            if aboveFull >= Self.fullHold - Self.tolerance {
+            if aboveFull.reached(Self.fullHold) {
                 stage = .fullSpeed
                 inStage = 0
                 return .fullSpeed
@@ -155,8 +191,8 @@ public struct HighTempProtection {
 
     private mutating func reset() {
         stage = .off
-        aboveStart = 0
-        aboveFull = 0
+        aboveStart.reset()
+        aboveFull.reset()
         inStage = 0
     }
 }

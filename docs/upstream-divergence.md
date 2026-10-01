@@ -93,8 +93,10 @@ fighting the system's own.
 `HighTempProtection` (Core) replaces it with the ladder in
 `docs/high-temp-protection-plan.md`: half fan speed after ten seconds at 90 °C, full
 after thirty seconds at 95 °C, and back down the same steps once each has been held for
-thirty seconds. Off means never, and a hands-off mode is left alone unless the user
-asks otherwise.
+thirty seconds. A hold counts the time the reading has actually spent at or above its
+threshold and tolerates dips of up to three seconds, because a single 100 ms sample
+below the line used to throw away a nearly-complete window. Off means never, and a
+hands-off mode is left alone unless the user asks otherwise.
 
 ### The daemon's floor sits above the ladder
 
