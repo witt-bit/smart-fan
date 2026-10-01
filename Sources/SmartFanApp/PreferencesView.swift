@@ -48,6 +48,21 @@ struct PreferencesView: View {
     @EnvironmentObject var language: AppLanguageStore
     @StateObject private var selection = PreferencesSelection()
 
+    // Which controls a page shows, and whether they are live, follows one rule:
+    //
+    // - A control that **belongs to another style or mode** is **absent** — the unit
+    //   picker is part of the numbers style, the sampling rows are part of the curve
+    //   style, the Fixed Rate slider is part of Fixed Rate. Nothing there could ever
+    //   take effect, so showing it greyed only adds noise.
+    // - A control that belongs to what is selected but **cannot change anything right
+    //   now** is **present and disabled**, never hidden — the metric needs a temperature
+    //   on screen, "Also in Default mode" needs the protection above it, the sampling
+    //   rows need a curve to sample for. A control that comes and goes reads as a bug; a
+    //   greyed one reads as a reason.
+    //
+    // The two `…Applies` properties in `MenuBarDisplayConfig` are exactly the second
+    // condition, so the views bind `.disabled()` to them rather than recomputing it.
+
     var body: some View {
         HStack(spacing: 0) {
             List(selection: $selection.tab) {
@@ -140,13 +155,14 @@ struct FansPreferences: View {
                 Toggle(language.text("High-temperature protection"),
                        isOn: $appState.highTempProtection)
                 hint(language.text("Half fan speed above 90 °C for 10 s, full above 95 °C for 30 s."))
-                if appState.highTempProtection {
-                    Toggle(language.text("Also in Default mode"),
-                           isOn: $appState.protectionInDefaultMode)
-                        .padding(.leading, 16)
-                    hint(language.text("Default leaves the fans to the system, so it is left alone."))
-                        .padding(.leading, 16)
-                }
+                // Always present, greyed while the feature above is off: a control that
+                // comes and goes reads as a bug, a greyed one reads as a reason.
+                Toggle(language.text("Also in Default mode"),
+                       isOn: $appState.protectionInDefaultMode)
+                    .padding(.leading, 16)
+                    .disabled(!appState.highTempProtection)
+                hint(language.text("Default leaves the fans to the system, so it is left alone."))
+                    .padding(.leading, 16)
             }
 
             Divider()
@@ -324,27 +340,36 @@ struct MenuBarPreferences: View {
             }
             .disabled(!appState.displayConfig.temperatureMetricApplies)
 
-            Divider()
-            // Units suffix a number, so only the numbers style uses them.
-            PickerRow(language.text("Units"), selection: config.unitDisplay) {
-                Text(language.text("None")).tag(UnitDisplay.none)
-                Text(language.text("Compact")).tag(UnitDisplay.compact)
-                Text(language.text("Full")).tag(UnitDisplay.full)
+            // Units suffix a number, so they belong to the numbers style: a curve draws no
+            // text at all. The row is absent there rather than greyed, and is greyed in the
+            // numbers style while both numbers are off — there is nothing to suffix.
+            if appState.displayConfig.style == .numbers {
+                Divider()
+                PickerRow(language.text("Units"), selection: config.unitDisplay) {
+                    Text(language.text("None")).tag(UnitDisplay.none)
+                    Text(language.text("Compact")).tag(UnitDisplay.compact)
+                    Text(language.text("Full")).tag(UnitDisplay.full)
+                }
+                .disabled(!appState.displayConfig.unitDisplayApplies)
             }
-            .disabled(!appState.displayConfig.unitDisplayApplies)
 
-            // Sampling only matters while a sparkline is actually drawn.
-            if appState.displayConfig.curveSettingsApply {
+            // Sampling belongs to the curve style the same way. In the curve style the rows
+            // stay put and grey out while both switches are off, since then there is no
+            // sparkline to sample for.
+            if appState.displayConfig.style.usesCurve {
+                Divider()
                 PickerRow(language.text("Sample Interval"), selection: config.sampleInterval) {
                     ForEach(MenuBarDisplayConfig.sampleIntervals, id: \.self) { value in
                         Text(MenuBarContent.durationLabel(value)).tag(value)
                     }
                 }
+                .disabled(!appState.displayConfig.curveSettingsApply)
                 PickerRow(language.text("Time Window"), selection: config.window) {
                     ForEach(MenuBarDisplayConfig.windows, id: \.self) { value in
                         Text(MenuBarContent.durationLabel(value)).tag(value)
                     }
                 }
+                .disabled(!appState.displayConfig.curveSettingsApply)
             }
         }
     }
