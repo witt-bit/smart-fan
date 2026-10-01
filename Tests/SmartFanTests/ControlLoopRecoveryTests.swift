@@ -117,7 +117,7 @@ struct DaemonRecoveryTests {
         #expect(!f.send(.init(verb: .set, rpm: 2000, oneshot: oneshot)).ok)
         #expect(f.state.isEmpty)
         #expect(!f.state.safetySuspended)
-        f.smc.temperature = 96
+        f.smc.temperature = 105
         f.daemon.thermalTick()
         #expect(f.state.command != "max")
         f.smc.onWrite = nil
@@ -150,7 +150,7 @@ struct DaemonRecoveryTests {
         let f = ControlFixture()
         #expect(f.send(.init(verb: .set, rpm: 3000)).ok)
         f.clock.advance(16)
-        f.smc.temperature = 96
+        f.smc.temperature = 105
         let entered = DispatchSemaphore(value: 0), resume = DispatchSemaphore(value: 0)
         let floorDone = DispatchSemaphore(value: 0), watchdogDone = DispatchSemaphore(value: 0)
         let watchdogStarted = DispatchSemaphore(value: 0)
@@ -199,7 +199,7 @@ struct DaemonRecoveryTests {
     @Test("The floor revalidates a hold cancelled while temperature was being sampled")
     func cancelledDuringSample() {
         var cancel: (() -> Void)?
-        let f = ControlFixture(sample: { cancel?(); return 96 })
+        let f = ControlFixture(sample: { cancel?(); return 105 })
         #expect(f.send(.init(verb: .set, rpm: 3000, oneshot: true)).ok)
         cancel = { #expect(f.send(.init(verb: .auto)).ok) }
         f.daemon.thermalTick()
@@ -212,14 +212,14 @@ struct DaemonRecoveryTests {
     func failedRestore() {
         let f = ControlFixture()
         #expect(f.send(.init(verb: .set, rpm: 2000, oneshot: true)).ok)
-        f.smc.temperature = 96
+        f.smc.temperature = 105
         f.daemon.thermalTick()
         f.smc.onWrite = { key, bytes in !(key == "F1Tg" && bytes == floatToSMCBytes(2000)) }
         f.smc.temperature = 89
         f.daemon.thermalTick()
         #expect(f.state.safetySuspended)
         #expect(f.smc.float("F0Tg") == 6000 && f.smc.float("F1Tg") == 6000)
-        f.smc.temperature = 96
+        f.smc.temperature = 105
         f.daemon.thermalTick()
         #expect(f.smc.float("F0Tg") == 6000)
         f.smc.onWrite = nil
@@ -233,7 +233,7 @@ struct DaemonRecoveryTests {
     func failureDuringSuspension() {
         let f = ControlFixture()
         #expect(f.send(.init(verb: .set, rpm: 3000, oneshot: true)).ok)
-        f.smc.temperature = 96
+        f.smc.temperature = 105
         f.daemon.thermalTick()
         #expect(f.state.safetySuspended)
         // One failed fan-count read: the request fails before writing anything.
@@ -258,7 +258,7 @@ struct DaemonRecoveryTests {
     func suspendedRequest() {
         let f = ControlFixture()
         #expect(f.send(.init(verb: .set, rpm: 3000, oneshot: true)).ok)
-        f.smc.temperature = 96
+        f.smc.temperature = 105
         f.daemon.thermalTick()
         let result = f.send(.init(verb: .set, rpm: 2000, oneshot: true))
         #expect(result.ok && result.note?.contains("queued") == true)
@@ -299,7 +299,7 @@ struct DaemonRecoveryTests {
             #expect(f.smc.float("F\(i)Tg") == Float(values[i].rpm))
         }
         #expect(try JSONDecoder().decode(DaemonResponse.self, from: JSONEncoder().encode(response)) == response)
-        f.smc.temperature = 96
+        f.smc.temperature = 105
         f.daemon.thermalTick()
         f.smc.temperature = 89
         f.daemon.thermalTick()
@@ -321,20 +321,21 @@ struct MonitorRecoveryTests {
     func failedFirstHoldReleases() {
         let f = ControlFixture()
         let monitor = f.monitor(.silent)
+        monitor.setProtection(.init(enabled: true, runsWhileHandedOff: true))
         monitor.onFanCommand = { command in
             switch command {
-            case .setMax: try f.fans.setMax()
+            case .setRPM: try f.fans.setMax()
             case .resetAuto: try f.fans.resetAuto()
             default: Issue.record("Unexpected command: \(command)")
             }
         }
         f.smc.onWrite = { key, bytes in !(key == "F1Tg" && bytes == floatToSMCBytes(6000)) }
-        f.smc.temperature = 96
-        f.tick(monitor)
+        f.smc.temperature = 90
+        f.tick(monitor, count: 100)   // ten seconds → the half-speed step
         #expect(f.smc.bytes("F0Md") == [1])
         #expect(monitor.state != .safetyOverride)
         f.smc.temperature = 49
-        f.tick(monitor)
+        f.tick(monitor, count: 300)   // the step's window runs out → release
         #expect(f.smc.bytes("F0Md") == [0] && f.smc.bytes("F1Md") == [0])
         #expect(f.smc.bytes("Ftst") == [0])
     }
@@ -343,6 +344,7 @@ struct MonitorRecoveryTests {
     func pumpRetryPreservesCLI() throws {
         let f = ControlFixture()
         let monitor = f.monitor(.silent)
+        monitor.setProtection(.init(enabled: true, runsWhileHandedOff: true))
         let completed = DispatchSemaphore(value: 0)
         let pump = FanCommandPump { command in f.send(.init(command, oneshot: false)).ok }
         monitor.onFanCommandAsync = { command, finish in
@@ -352,14 +354,13 @@ struct MonitorRecoveryTests {
             }
         }
         f.smc.temperature = 96
-        f.tick(monitor)
+        f.tick(monitor, count: 100)   // ten seconds → the half-speed step
         try #require(completed.wait(timeout: .now() + 3) == .success)
-        f.smc.temperature = 94
-        f.tick(monitor)
+        f.tick(monitor)               // commit the acknowledgement on the queue
         #expect(monitor.state == .safetyOverride)
         f.smc.onWrite = { key, bytes in !((key.hasSuffix("Md") || key == "Ftst") && bytes == [0]) }
         f.smc.temperature = 49
-        f.tick(monitor)
+        f.tick(monitor, count: 300)   // the step's window runs out → the release is attempted
         try #require(completed.wait(timeout: .now() + 3) == .success)
         f.tick(monitor) // consume failed acknowledgement
         f.smc.onWrite = nil
@@ -396,6 +397,7 @@ struct MonitorRecoveryTests {
     func synchronousResetRetry(profile: FanProfile) {
         let f = ControlFixture()
         let monitor = f.monitor(profile)
+        monitor.setProtection(.init(enabled: true, runsWhileHandedOff: true))
         var resets = 0
         var failReset = true
         monitor.onFanCommand = { command in
@@ -405,12 +407,12 @@ struct MonitorRecoveryTests {
             }
         }
         f.smc.temperature = 96
-        f.tick(monitor)
+        f.tick(monitor, count: 100)
         #expect(monitor.state == .safetyOverride)
+        // Cooling: the step's window runs out, then the release is attempted and fails.
         f.smc.temperature = 49
-        f.tick(monitor)
+        f.tick(monitor, count: 350)
         #expect(monitor.state != .idle)
-        f.tick(monitor, count: 50)
         #expect(resets >= 2)
         failReset = false
         f.tick(monitor, count: 310)
@@ -420,67 +422,82 @@ struct MonitorRecoveryTests {
         #expect(resets == successCount)
     }
 
-    @Test("Safety max failure is retried; successful max retains the 95/90 hysteresis")
-    func safetyRetry() {
+    @Test("A failed protection step is retried, and the step holds through a dip below its entry point")
+    func protectionRetry() {
         let f = ControlFixture()
         let monitor = f.monitor(.silent)
+        // The ladder leaves a hands-off mode alone by default; this test is about the
+        // ladder's own mechanics, so it opts in. The default is covered separately.
+        monitor.setProtection(.init(enabled: true, runsWhileHandedOff: true))
         var commands: [FanCommand] = []
         var failures = 1
         monitor.onFanCommand = { command in
             commands.append(command)
-            if command == .setMax, failures > 0 { failures -= 1; throw SmartFanError.writeFailed("max") }
+            if command == .setRPM(3000), failures > 0 { failures -= 1; throw SmartFanError.writeFailed("half") }
         }
-        f.smc.temperature = 96
-        f.tick(monitor)
+        // Ten seconds at 90 °C is what it takes to step up to half fan speed.
+        f.smc.temperature = 90
+        f.tick(monitor, count: 100)
+        #expect(commands == [.setRPM(3000)])
+        // The failed write is not trusted…
         #expect(monitor.state != .safetyOverride)
-        // A brief fall below 95 must not cancel the still-unfulfilled max demand.
-        f.smc.temperature = 94
+        // …and is retried after its backoff rather than dropped.
+        f.tick(monitor, count: 25)
+        #expect(commands == [.setRPM(3000), .setRPM(3000)])
+        #expect(monitor.state == .safetyOverride)
+        // A dip below the entry point must not release the step before its window is up.
+        f.smc.temperature = 84
         f.tick(monitor, count: 25)
         #expect(monitor.state == .safetyOverride)
-        #expect(commands == [.setMax, .setMax])
-        f.smc.temperature = 94
-        f.tick(monitor, count: 25)
-        #expect(commands == [.setMax, .setMax])
-        f.smc.temperature = 89
-        f.tick(monitor)
+        #expect(commands.count == 2)
+        // With the window run out below 90 °C, the ladder hands the fans back.
+        f.tick(monitor, count: 280)
         #expect(commands.last == .resetAuto)
         #expect(monitor.state == .idle)
     }
 
-    @Test("A failed reset cannot make a later hot tick trust a stale max state")
+    @Test("A failed release cannot make a later hot stretch trust a stale protection state")
     func hotAfterFailedReset() {
         let f = ControlFixture()
         let monitor = f.monitor(.silent)
+        monitor.setProtection(.init(enabled: true, runsWhileHandedOff: true))
         var commands: [FanCommand] = []
         monitor.onFanCommand = { command in
             commands.append(command)
             if command == .resetAuto { throw SmartFanError.writeFailed("partial reset") }
         }
-        f.smc.temperature = 96
-        f.tick(monitor)
+        f.smc.temperature = 90
+        f.tick(monitor, count: 100)
+        #expect(commands == [.setRPM(3000)])
         f.smc.temperature = 49
-        f.tick(monitor)
-        f.smc.temperature = 96
-        f.tick(monitor)
-        #expect(commands == [.setMax, .resetAuto, .setMax])
+        f.tick(monitor, count: 350)   // the step stops; every release attempt fails
+        #expect(commands.contains(.resetAuto))
+        f.smc.temperature = 90
+        f.tick(monitor, count: 100)   // hot again → the step is re-issued, not assumed
+        #expect(commands.last == .setRPM(3000))
+        #expect(commands.filter { $0 == .setRPM(3000) }.count == 2)
     }
 
     @Test("Async writes are bounded; only an acknowledged reset clears active state")
     func asyncAcknowledgement() throws {
         let f = ControlFixture()
-        let monitor = f.monitor(.balanced)
+        let monitor = f.monitor(.silent)
+        monitor.setProtection(.init(enabled: true, runsWhileHandedOff: true))
         var pending: [(FanCommand, @Sendable (Bool) -> Void)] = []
         monitor.onFanCommandAsync = { command, completion in pending.append((command, completion)) }
-        f.smc.temperature = 96
-        f.tick(monitor, count: 20)
+        f.smc.temperature = 90
+        f.tick(monitor, count: 100)
         #expect(pending.count == 1)
-        #expect(monitor.state == .idle)
+        #expect(pending.first?.0 == .setRPM(3000))
+        #expect(monitor.state == .idle)   // nothing is committed before the acknowledgement
         pending.removeFirst().1(true)
-        f.smc.temperature = 94
-        f.tick(monitor)
+        f.tick(monitor)                  // the acknowledgement is committed on the queue
         #expect(monitor.state == .safetyOverride)
+        // Still hot: an acknowledged step is not re-issued.
+        f.tick(monitor, count: 25)
+        #expect(pending.isEmpty)
         f.smc.temperature = 49
-        f.tick(monitor)
+        f.tick(monitor, count: 300)      // the step's window runs out → release
         #expect(pending.first?.0 == .resetAuto)
         pending.removeFirst().1(false)
         f.tick(monitor, count: 25)
@@ -497,10 +514,11 @@ struct MonitorRecoveryTests {
     func profileCancelsOldCompletion() throws {
         let f = ControlFixture()
         let monitor = f.monitor(.silent)
+        monitor.setProtection(.init(enabled: true, runsWhileHandedOff: true))
         var pending: [(FanCommand, @Sendable (Bool) -> Void)] = []
         monitor.onFanCommandAsync = { pending.append(($0, $1)) }
-        f.smc.temperature = 96
-        f.tick(monitor)
+        f.smc.temperature = 90
+        f.tick(monitor, count: 100)
         try #require(pending.count == 1)
         monitor.switchProfile(.balanced)
         f.smc.temperature = 70
@@ -515,22 +533,92 @@ struct MonitorRecoveryTests {
     @Test("Switching to Smart keeps the old release obligation, and skips the sustained window")
     func newProfileTiming() {
         let f = ControlFixture()
-        let monitor = f.monitor(.balanced)
+        let monitor = f.monitor(.silent)
+        monitor.setProtection(.init(enabled: true, runsWhileHandedOff: true))
         var commands: [FanCommand] = []
         monitor.onFanCommand = { commands.append($0) }
-        f.smc.temperature = 96
-        f.tick(monitor)
+        f.smc.temperature = 90
+        f.tick(monitor, count: 100)   // a protection step owns the fans, so a release is owed
+        #expect(commands == [.setRPM(3000)])
         monitor.switchProfile(.smart)
         f.smc.temperature = 60
+        // The step is a temperature response, not a mode one, so it finishes its window
+        // before Smart takes over — it is not cancelled by the switch.
+        f.tick(monitor, count: 290)
+        // Only the step's own command is issued: the switch invalidates the previous
+        // acknowledgement, so it is re-established once, and Smart never runs.
+        #expect(commands.allSatisfy { $0 == .setRPM(3000) })
+        #expect(commands.count == 2)
+        // Window ends at 300; Smart then acts without waiting out its own 6 s window.
         // DELIBERATE DIVERGENCE from upstream: upstream restarts the sustained window on
         // a switch and asserted `commands == [.setMax]` here (5 s < Smart's 6 s). This
         // fork satisfies the window for a mode the user chose explicitly — waiting makes
         // the switch look broken — so Smart engages at once. See ModeSwitchTests and
         // docs/upstream-divergence.md.
-        f.tick(monitor, count: 50)
+        f.tick(monitor, count: 15)
         #expect(commands.count > 1)
         f.smc.temperature = 49
         f.tick(monitor, count: 20)
         #expect(commands.last == .resetAuto)
+    }
+
+    @Test("A hands-off mode is not overridden unless the user asks for it")
+    func handsOffNotOverridden() {
+        let f = ControlFixture()
+        let monitor = f.monitor(.silent)
+        var commands: [FanCommand] = []
+        monitor.onFanCommand = { commands.append($0) }
+        f.smc.temperature = 99
+        f.tick(monitor, count: 600)
+        #expect(commands.isEmpty)
+        #expect(monitor.state == .idle)
+    }
+
+    @Test("Turning the protection off hands a held step back at once")
+    func switchingProtectionOffReleases() {
+        let f = ControlFixture()
+        let monitor = f.monitor(.silent)
+        monitor.setProtection(.init(enabled: true, runsWhileHandedOff: true))
+        var commands: [FanCommand] = []
+        monitor.onFanCommand = { commands.append($0) }
+        f.smc.temperature = 90
+        f.tick(monitor, count: 100)
+        #expect(monitor.state == .safetyOverride)
+        monitor.setProtection(.init(enabled: false, runsWhileHandedOff: false))
+        f.tick(monitor, count: 2)
+        #expect(commands.last == .resetAuto)
+        #expect(monitor.state == .idle)
+        f.tick(monitor, count: 200)
+        #expect(commands.last == .resetAuto)
+    }
+
+    @Test("The ladder drives the fan: half speed, then full, then back down")
+    func protectionLadderOnTheFans() {
+        let f = ControlFixture()
+        let monitor = f.monitor(.silent)
+        monitor.setProtection(.init(enabled: true, runsWhileHandedOff: true))
+        monitor.onFanCommand = { command in
+            switch command {
+            case .setMax: try f.fans.setMax()
+            case .setRPM(let rpm): try f.fans.setAllFans(rpm: rpm)
+            case .resetAuto: try f.fans.resetAuto()
+            default: Issue.record("Unexpected command: \(command)")
+            }
+        }
+        f.tick(monitor)                          // observe the starting state
+        f.smc.temperature = 90
+        f.tick(monitor, count: 100)
+        #expect(f.smc.float("F0Tg") == 3000)     // half of the fan's 6000 maximum
+        f.smc.temperature = 95
+        f.tick(monitor, count: 300)
+        #expect(monitor.state == .safetyOverride)
+        #expect(f.smc.float("F0Tg") == 6000)
+        f.smc.temperature = 92
+        f.tick(monitor, count: 300)
+        #expect(f.smc.float("F0Tg") == 3000)     // back to half, not straight off
+        f.smc.temperature = 85
+        f.tick(monitor, count: 300)
+        #expect(monitor.state == .idle)
+        #expect(f.smc.float("F0Tg") == 0)
     }
 }

@@ -82,5 +82,9 @@
   "Couldn't reach GitHub": "无法连接 GitHub",
   "Apple auto": "Apple 自动",
   "Just switched modes — {seconds}s before switching again. Default is always available.": "刚切换过模式，请等 {seconds} 秒再切。「默认」不受限制。",
-  "Use °F": "使用 °F"
+  "Use °F": "使用 °F",
+  "High-temperature protection": "高温防护",
+  "Half fan speed above 90 °C for 10 s, full above 95 °C for 30 s.": "高于 90 °C 持续 10 秒后转速一半；高于 95 °C 持续 30 秒后转速最大。",
+  "Also in Default mode": "在「默认」模式也生效",
+  "Default leaves the fans to the system, so it is left alone.": "「默认」把风扇交给系统，所以默认不干预。"
 }

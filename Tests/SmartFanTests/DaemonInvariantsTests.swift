@@ -58,25 +58,28 @@ struct DaemonInvariantsTests {
 
     @Test("engages only when overheating AND a below-max hold is active")
     func thermalFloorEngage() {
-        let floor = ThermalFloor()   // 95 / 90 from FanProfile
-        #expect(floor.evaluate(temp: 95, holdCommand: "set 2000", suspended: false) == .engage)
-        #expect(floor.evaluate(temp: 96, holdCommand: "setfan 1 1500", suspended: false) == .engage)
+        let floor = ThermalFloor()   // 105 / 100 from FanProfile
+        #expect(floor.evaluate(temp: 105, holdCommand: "set 2000", suspended: false) == .engage)
+        #expect(floor.evaluate(temp: 106, holdCommand: "setfan 1 1500", suspended: false) == .engage)
         // No hold (auto) → Apple's auto + client monitor own it.
-        #expect(floor.evaluate(temp: 99, holdCommand: nil, suspended: false) == .none)
+        #expect(floor.evaluate(temp: 109, holdCommand: nil, suspended: false) == .none)
         // Already max → nothing to override.
-        #expect(floor.evaluate(temp: 99, holdCommand: "max", suspended: false) == .none)
+        #expect(floor.evaluate(temp: 109, holdCommand: "max", suspended: false) == .none)
         // Below threshold → none.
-        #expect(floor.evaluate(temp: 94.9, holdCommand: "set 2000", suspended: false) == .none)
+        #expect(floor.evaluate(temp: 104.9, holdCommand: "set 2000", suspended: false) == .none)
+        // In the range the app's own ladder acts in, the daemon stays out of the way,
+        // so the graduated steps are what the user sees on the fan.
+        #expect(floor.evaluate(temp: 96, holdCommand: "set 2000", suspended: false) == .none)
     }
 
     @Test("restores only after cooling past the hysteresis point")
     func thermalFloorRestoreHysteresis() {
         let floor = ThermalFloor()
-        // Still in the 90–95 band → keep max.
-        #expect(floor.evaluate(temp: 95, holdCommand: "set 2000", suspended: true) == .none)
-        #expect(floor.evaluate(temp: 91, holdCommand: "set 2000", suspended: true) == .none)
-        // Cooled below 90 → restore.
-        #expect(floor.evaluate(temp: 89.9, holdCommand: "set 2000", suspended: true) == .restore)
+        // Still in the 100–105 band → keep max.
+        #expect(floor.evaluate(temp: 105, holdCommand: "set 2000", suspended: true) == .none)
+        #expect(floor.evaluate(temp: 104, holdCommand: "set 2000", suspended: true) == .none)
+        // Cooled below 100 → restore.
+        #expect(floor.evaluate(temp: 99.9, holdCommand: "set 2000", suspended: true) == .restore)
         // Restore fires even with the hold cleared (dead app) — daemon then goes to auto.
         #expect(floor.evaluate(temp: 80, holdCommand: nil, suspended: true) == .restore)
     }
@@ -84,7 +87,7 @@ struct DaemonInvariantsTests {
     @Test("thresholds mirror FanProfile, not hardcoded numbers")
     func thermalFloorThresholdsMirrorProfile() {
         let floor = ThermalFloor()
-        #expect(floor.threshold == FanProfile.safetyTempThreshold)
-        #expect(floor.clearBelow == FanProfile.safetyTempThreshold - FanProfile.hysteresisDegrees)
+        #expect(floor.threshold == FanProfile.emergencyTempThreshold)
+        #expect(floor.clearBelow == FanProfile.emergencyTempThreshold - FanProfile.hysteresisDegrees)
     }
 }

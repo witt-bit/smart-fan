@@ -127,9 +127,11 @@ struct ProfileTests {
 
     }
 
-    @Test("Safety threshold is 95°C")
-    func safetyThreshold() {
-        #expect(FanProfile.safetyTempThreshold == 95.0)
+    @Test("The daemon's emergency floor sits above the app's protection ladder")
+    func emergencyThreshold() {
+        #expect(FanProfile.emergencyTempThreshold == 105.0)
+        // The ladder must own the whole range it acts in, or the two fight over one fan.
+        #expect(FanProfile.emergencyTempThreshold > HighTempProtection.fullTemp)
     }
 
     @Test("Hysteresis deadband is 5°C")

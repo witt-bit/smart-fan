@@ -82,5 +82,9 @@
   "Couldn't reach GitHub": "Couldn't reach GitHub",
   "Apple auto": "Apple auto",
   "Just switched modes — {seconds}s before switching again. Default is always available.": "Just switched modes — {seconds}s before switching again. Default is always available.",
-  "Use °F": "Use °F"
+  "Use °F": "Use °F",
+  "High-temperature protection": "High-temperature protection",
+  "Half fan speed above 90 °C for 10 s, full above 95 °C for 30 s.": "Half fan speed above 90 °C for 10 s, full above 95 °C for 30 s.",
+  "Also in Default mode": "Also in Default mode",
+  "Default leaves the fans to the system, so it is left alone.": "Default leaves the fans to the system, so it is left alone."
 }

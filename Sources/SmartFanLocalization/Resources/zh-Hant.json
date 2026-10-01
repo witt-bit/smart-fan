@@ -1,5 +1,6 @@
 {
   "About" : "關於",
+  "Also in Default mode" : "在「默認」模式也生效",
   "Ambient" : "環境",
   "Apple auto" : "Apple 自動",
   "Asks for your password once. If it doesn't come back right away, it will keep retrying on its own." : "需要一次管理員授權。如果沒有立即恢復，應用會繼續自動重試。",
@@ -14,6 +15,7 @@
   "Couldn't update the background service." : "無法更新後台服務。",
   "Current Mode" : "當前模式",
   "Default" : "默認",
+  "Default leaves the fans to the system, so it is left alone." : "「默認」把風扇交給系統，所以默認不干預。",
   "Dual Curve" : "雙曲線",
   "Fan control unavailable" : "風扇控制不可用",
   "Fan speed" : "風扇轉速",
@@ -30,6 +32,8 @@
   "Full" : "完整",
   "GPU" : "GPU",
   "General" : "通用",
+  "Half fan speed above 90 °C for 10 s, full above 95 °C for 30 s." : "高於 90 °C 持續 10 秒後轉速一半；高於 95 °C 持續 30 秒後轉速最大。",
+  "High-temperature protection" : "高溫防護",
   "Homepage" : "項目主頁",
   "Icon + Numbers" : "數值",
   "Just switched modes — {seconds}s before switching again. Default is always available." : "剛切換過模式，請等 {seconds} 秒再切。「默認」不受限制。",

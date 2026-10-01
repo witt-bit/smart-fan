@@ -133,6 +133,24 @@ struct FansPreferences: View {
 
             Divider()
 
+            // Two controllers on one fan is what makes these switches worth having: off
+            // means the ladder never runs, and a hands-off mode is left to the system
+            // unless the user asks otherwise (docs/high-temp-protection-plan.md).
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(language.text("High-temperature protection"),
+                       isOn: $appState.highTempProtection)
+                hint(language.text("Half fan speed above 90 °C for 10 s, full above 95 °C for 30 s."))
+                if appState.highTempProtection {
+                    Toggle(language.text("Also in Default mode"),
+                           isOn: $appState.protectionInDefaultMode)
+                        .padding(.leading, 16)
+                    hint(language.text("Default leaves the fans to the system, so it is left alone."))
+                        .padding(.leading, 16)
+                }
+            }
+
+            Divider()
+
             // Live state: the mode above is the user's choice; this is what the
             // monitor is actually doing (a safety override or idle shows up here).
             HStack(spacing: 6) {
@@ -178,6 +196,14 @@ struct FansPreferences: View {
             ), in: rpmRange, step: 100)
             .disabled(rpmRange.lowerBound >= rpmRange.upperBound)
         }
+    }
+
+    /// Secondary line under a control: small, dim, and free to wrap.
+    private func hint(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     /// The fan's own range when the hardware reports one. Falls back to a plausible

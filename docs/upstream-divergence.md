@@ -12,7 +12,8 @@ The logic lives in new files so merges touch as few upstream lines as possible:
 |---|---|
 | `Sources/SmartFanCore/SMCSensorFilter.swift` | Drops SMC keys that IOHID identifies as battery sensors, and die readings below 10°C |
 | `Sources/SmartFanCore/ThermalStatus+Display.swift` | CPU row = per-core keys (Stats' M4 map on the M4 generation); headline = hotter of CPU and GPU rows |
-| `Tests/SmartFanTests/SMCSensorFilterTests.swift`, `DisplayedTemperatureTests.swift` | Coverage for both |
+| `Sources/SmartFanCore/HighTempProtection.swift` | The graduated high-temperature protection ladder, replacing the single 95 °C threshold |
+| `Tests/SmartFanTests/SMCSensorFilterTests.swift`, `DisplayedTemperatureTests.swift`, `HighTempProtectionTests.swift` | Coverage for all three |
 
 ## Upstream lines changed
 
@@ -22,11 +23,15 @@ The logic lives in new files so merges touch as few upstream lines as possible:
 | `Sources/SmartFanCore/FanControl.swift`, `thermalKeys` | +2 lines after the `Tp*` block: comment and `"Tp0V", "Tp0Y", "Tp0e", "Te05", "Te0S", "Te09", "Te0H"` | M4 core keys upstream does not probe |
 | `Sources/SmartFanApp/MenuBarView.swift`, CPU `TemperatureRow` | `peakTemp(prefixes: ["TC", "Tp"])` → `appState.latestStatus?.displayedCPUTemp` | CPU row uses core keys, not hotspot keys |
 | `Sources/SmartFanApp/AppState.swift`, `startMonitoring` `onUpdate` | The `displayPrefixes` filter → `self?.maxTemp = status.displayedPeakTemp` | Headline matches the panel |
+| `Sources/SmartFanCore/ThermalMonitor.swift`, `tick` | The 95/90 latch → `HighTempProtection.evaluate(...)`; new `setProtection` and `applyProtectionSpeed` | The ladder, and the settings that turn it off |
+| `Sources/SmartFanCore/Profile.swift` | `safetyTempThreshold` (95) → `emergencyTempThreshold` (105) | The daemon's floor moves above the ladder; see the divergence below |
+| `Sources/SmartFanCore/DaemonInvariants.swift` | `ThermalFloor` default threshold → `FanProfile.emergencyTempThreshold` | Same |
 
-Deliberately **not** changed: `ThermalStatus.safetyPeakTemp`,
-`FanControl.safetyTempKeys`, the daemon's safety sweep, `ThermalMonitor`, the
-profile curves and the 95°C threshold. Fan control keeps following the hottest
-key, including `TCDX`/`TCMb`/`Tp06`.
+Deliberately **not** changed: `ThermalStatus.safetyPeakTemp`, `FanControl.safetyTempKeys`,
+the daemon's safety sweep, the profile curves. Fan control still follows the hottest
+key, including `TCDX`/`TCMb`/`Tp06` — a known, measured divergence from the panel's
+reading (the safety basis reads ~9 °C high) that is recorded in
+`docs/high-temp-protection-plan.md` §5 and deliberately left for later.
 
 ## Re-applying after an upstream merge
 
@@ -76,4 +81,30 @@ cannot be flipped back and forth either.
 The Fans page Status row answers who controls the fans — the profile name, SAFETY,
 Fixed Rate, or Apple auto — rather than reporting the monitor's own idle state,
 which read as "the fan is idle" next to a spinning fan.
+
+### High-temperature protection is a ladder, not a threshold
+
+Upstream maxes the fans the moment a single 10 Hz sample reads 95 °C, and releases them
+as soon as one reads below 90 °C. A die reading that swings 6–11 °C in two seconds
+crossed both lines repeatedly, so the fans spun for a few seconds and stopped again,
+over and over, and the mode that hands the fans to Apple was overridden by a controller
+fighting the system's own.
+
+`HighTempProtection` (Core) replaces it with the ladder in
+`docs/high-temp-protection-plan.md`: half fan speed after ten seconds at 90 °C, full
+after thirty seconds at 95 °C, and back down the same steps once each has been held for
+thirty seconds. Off means never, and a hands-off mode is left alone unless the user
+asks otherwise.
+
+### The daemon's floor sits above the ladder
+
+`ThermalFloor` engaged at 95 °C whenever it was holding the fans below max — the same
+band the ladder works in, and the same sensor keys, so the two would fight over one fan:
+the daemon would jump straight to max and skip the graduated steps. Its threshold is now
+`FanProfile.emergencyTempThreshold` (105 °C, clearing below 100), above the ladder's
+range *and* above its 30 s escalation window. The ladder owns the graduated response;
+the floor is the backstop for a client that has stopped responding while pinning the
+fans low.
+
+`ControlLoopRecoveryTests` and `DaemonInvariantsTests` encode both.
 

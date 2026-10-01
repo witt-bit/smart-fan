@@ -40,13 +40,14 @@ public struct RateLimiter {
 }
 
 /// The thermal safety floor's decision, given a sampled temperature and the current
-/// hold/suspension state. Thresholds are mirrored from `FanProfile` (read, not
-/// invented). The DaemonServer maps `.engage`/`.restore` onto SMC + `safetySuspended`.
+/// hold/suspension state. The threshold is read from `FanProfile` rather than invented
+/// here, and sits above the app's own protection ladder on purpose — see
+/// `FanProfile.emergencyTempThreshold`.
 public struct ThermalFloor {
     public let threshold: Float
     public let clearBelow: Float
 
-    public init(threshold: Float = FanProfile.safetyTempThreshold,
+    public init(threshold: Float = FanProfile.emergencyTempThreshold,
                 hysteresis: Float = FanProfile.hysteresisDegrees) {
         self.threshold = threshold
         self.clearBelow = threshold - hysteresis

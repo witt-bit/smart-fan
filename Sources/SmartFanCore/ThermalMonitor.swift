@@ -85,9 +85,13 @@ public final class ThermalMonitor: @unchecked Sendable {
     private var lastAppliedRPMPercent: Float = 0
     /// Accumulates sub-threshold ramp steps independently of acknowledged writes.
     private var rampedRPMPercent: Float = 0
-    /// Latch the temperature demand independently of a successful max write, so
-    /// a failed/pending max is still retried in the 90–95°C hysteresis band.
-    private var safetyDemand = false
+    /// The high-temperature protection ladder. It replaces a single-threshold latch
+    /// with steps that are each held for a minimum time, so a die reading that swings
+    /// several degrees per second cannot make the fans flap — and it climbs back down
+    /// in the same steps it climbed up.
+    private var protection = HighTempProtection()
+    /// The user's protection settings, pushed in from the app.
+    private var protectionSettings = HighTempProtection.Settings()
     private var profileGeneration = 0
     private var pendingCommand = false
     /// False while a write is outstanding or failed: even an unchanged target must
@@ -121,6 +125,15 @@ public final class ThermalMonitor: @unchecked Sendable {
     public func setCalibrating(_ value: Bool) {
         queue.async { self.isCalibrating = value }
     }
+
+    /// Apply the user's high-temperature protection settings. Switching protection off
+    /// mid-ladder releases the fans on the next tick.
+    public func setProtection(_ settings: HighTempProtection.Settings) {
+        queue.async { self.protectionSettings = settings }
+    }
+
+    /// Which step of the protection ladder is holding the fans, if any.
+    public var protectionStage: HighTempProtection.Stage { onQueue { protection.stage } }
     private var calibration: CalibrationData?
 
     /// Called on UI update cadence (every 500ms) with updated status.
@@ -243,18 +256,24 @@ public final class ThermalMonitor: @unchecked Sendable {
             monitorTick(status: status, maxTemp: maxTemp)
         }
 
-        if maxTemp >= FanProfile.safetyTempThreshold { safetyDemand = true }
-        if maxTemp < FanProfile.safetyTempThreshold - FanProfile.hysteresisDegrees { safetyDemand = false }
-        if safetyDemand {
-            if state != .safetyOverride || !commandConfirmed {
-                applyCommand(.setMax) { [self] in
-                    state = .safetyOverride
-                    fansCurrentlyRunning = true
-                    lastAppliedRPMPercent = 1.0
-                    rampedRPMPercent = 1.0
-                    logger?.safety("Override triggered: \(String(format: "%.1f", maxTemp))°C — fans maxed")
-                }
-            }
+        // High-temperature protection: a graduated ladder, not a single threshold.
+        // It also owns the decision about whether to act at all — off means never, and
+        // a mode that hands the fans to the system is left alone unless the user asks
+        // otherwise (docs/high-temp-protection-plan.md).
+        let action = protection.evaluate(temp: maxTemp,
+                                         elapsed: TimeInterval(tickInterval),
+                                         handedOff: activeProfile.curve.handsOff,
+                                         settings: protectionSettings)
+        if case .stop = action {
+            logger?.safety(
+                "Protection released: \(String(format: "%.1f", maxTemp))°C — fans back to \(activeProfile.name)")
+        }
+        if protection.isEngaged {
+            // Re-asserted every engaged tick, not only on the step change: the helper
+            // writes only when the step changed or the previous write is unconfirmed, so a
+            // failed write is retried and a held step costs nothing. The selected mode must
+            // not fight the step, hence the early return.
+            applyProtectionSpeed(protection.stage == .fullSpeed ? 1.0 : 0.5, temp: maxTemp)
             if tickCounter % Self.uiUpdateCadence == 0 {
                 onUpdate?(status, activeProfile, state)
             }
@@ -558,6 +577,33 @@ public final class ThermalMonitor: @unchecked Sendable {
             }
         } else if fansCurrentlyRunning {
             state = .active(profileName: activeProfile.name)
+        }
+    }
+
+    // MARK: - High-Temperature Protection
+
+    /// Command a protection step: half or full fan speed.
+    ///
+    /// Re-issues a write that is still unconfirmed, and a step change, but never the same
+    /// speed twice. The full step commands `.setMax` rather than a computed RPM, so the
+    /// daemon records a max hold and its own floor knows the fans are already there.
+    private func applyProtectionSpeed(_ fraction: Float, temp: Float) {
+        guard state != .safetyOverride || !commandConfirmed
+            || abs(lastAppliedRPMPercent - fraction) > 0.002 else { return }
+        let command: FanCommand
+        if fraction >= 1.0 {
+            command = .setMax
+        } else {
+            let maxRPM = latestStatus?.fans.first.map { Float($0.maxRPM) } ?? 7826
+            let minRPM = latestStatus?.fans.first.map { Float($0.minRPM) } ?? 0
+            command = .setRPM(max(maxRPM * fraction, minRPM))
+        }
+        applyCommand(command) { [self] in
+            state = .safetyOverride
+            fansCurrentlyRunning = true
+            lastAppliedRPMPercent = fraction
+            rampedRPMPercent = fraction
+            logger?.safety("Protection: \(fraction >= 1 ? "full" : "half") fan speed at \(String(format: "%.1f", temp))°C")
         }
     }
 

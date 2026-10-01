@@ -317,8 +317,15 @@ extension FanProfile {
 // MARK: - Safety
 
 extension FanProfile {
-    /// Hard safety threshold — overrides any profile
-    public static let safetyTempThreshold: Float = 95.0
+    /// The daemon's last-resort floor, and deliberately above the range the app's own
+    /// high-temperature protection ladder works in (90 °C → half speed, 95 °C → full).
+    ///
+    /// Both read the same sensor keys, so the margin has to exceed the ladder's 30 s
+    /// escalation window, not just its final step: at 100 the floor could still max the
+    /// fans while the ladder was holding half speed and climbing. The ladder owns the
+    /// graduated response; this only fires when a client has stopped responding while
+    /// pinning the fans low.
+    public static let emergencyTempThreshold: Float = 105.0
     /// Hysteresis deadband to prevent oscillation
     public static let hysteresisDegrees: Float = 5.0
 }

@@ -39,6 +39,20 @@ First release under the SmartFan name. Built on ThermalForge 0.2.3 plus the MacF
   a **10 s cooldown** stops modes being flipped back and forth. Default is exempt: it is the
   escape hatch when the fans are loud.
 
+### High-temperature protection
+
+- **A graduated ladder replaces the single threshold.** The fans step up to half speed
+  after ten seconds at 90 °C and to full after thirty seconds at 95 °C, and step back
+  down the same way once each step has been held for thirty seconds. The old behaviour
+  maxed the fans on one reading and released them on one reading, and a die sensor that
+  swings several degrees per second crossed both lines repeatedly — the fans spun for a
+  few seconds and stopped again, over and over.
+- **Two switches**, on the Fans page: **High-temperature protection** (on by default;
+  off means it never runs) and **Also in Default mode** (off by default, because Default
+  means the fans belong to the system, not to a second controller fighting it).
+- The background service's own emergency floor moved above the ladder's range (105 °C),
+  so the two can no longer pre-empt each other on the same fan.
+
 ### Background service
 
 - **The app manages it.** A missing, outdated or unresponsive service is installed, updated

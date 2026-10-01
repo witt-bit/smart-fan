@@ -15,6 +15,25 @@ final class AppState: ObservableObject {
     @Published var activeProfile: FanProfile = .silent
     @Published var monitorState: MonitorState = .idle
     @Published var maxTemp: Float?
+    /// High-temperature protection: a graduated fan ladder (docs/high-temp-protection-plan.md).
+    /// On by default; off means it never runs. Read through `object(forKey:)` rather than
+    /// `bool(forKey:)`, which reports a missing key as false and would ship it off.
+    @Published var highTempProtection: Bool =
+        (UserDefaults.standard.object(forKey: "highTempProtection") as? Bool) ?? true {
+        didSet {
+            UserDefaults.standard.set(highTempProtection, forKey: "highTempProtection")
+            applyProtectionSettings()
+        }
+    }
+    /// Whether the ladder also runs while "Default" (the hands-off mode) owns the fans.
+    /// Off by default: that mode means the system controls them.
+    @Published var protectionInDefaultMode: Bool =
+        UserDefaults.standard.bool(forKey: "protectionInDefaultMode") {
+        didSet {
+            UserDefaults.standard.set(protectionInDefaultMode, forKey: "protectionInDefaultMode")
+            applyProtectionSettings()
+        }
+    }
     @Published var useFahrenheit: Bool = UserDefaults.standard.bool(forKey: "useFahrenheit") {
         didSet { UserDefaults.standard.set(useFahrenheit, forKey: "useFahrenheit") }
     }
@@ -444,6 +463,14 @@ final class AppState: ObservableObject {
         }
         monitor.start()
         self.monitor = monitor
+        applyProtectionSettings()
+    }
+
+    /// Push the protection settings to the monitor. A change is picked up on the monitor's
+    /// next tick, so turning protection off hands a held step back without a restart.
+    private func applyProtectionSettings() {
+        monitor?.setProtection(HighTempProtection.Settings(
+            enabled: highTempProtection, runsWhileHandedOff: protectionInDefaultMode))
     }
 
     // MARK: - Actions
