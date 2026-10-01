@@ -30,7 +30,7 @@ struct MenuBarContentTests {
         #expect(MenuBarContent.rpm(nil, units: .full) == nil)
     }
 
-    @Test("Readings follow the style and the temperature metric")
+    @Test("Readings follow the switches and the temperature metric")
     func readings() {
         let s = status(average: 50, battery: 30, rpm: 2000)
         var config = MenuBarDisplayConfig.default
@@ -43,14 +43,17 @@ struct MenuBarContentTests {
         config.temperatureMetric = .feelsLike
         #expect(MenuBarContent.readings(config, status: s, fahrenheit: false).temperature == "30°")
 
-        // Curve styles fall back to the reading they will plot until P3.
-        config.style = .rpmCurve
+        // The switches choose which numbers the icon style prints…
+        config.showTemperature = false
         let rpmOnly = MenuBarContent.readings(config, status: s, fahrenheit: false)
         #expect(rpmOnly.temperature == nil)
         #expect(rpmOnly.rpm == "2000")
 
-        config.style = .temperatureCurve
-        #expect(MenuBarContent.readings(config, status: s, fahrenheit: false).rpm == nil)
+        // …and the curve style prints none at all: it draws them instead.
+        config.showTemperature = true
+        config.style = .curve
+        let drawn = MenuBarContent.readings(config, status: s, fahrenheit: false)
+        #expect(drawn.temperature == nil && drawn.rpm == nil)
     }
 
     @Test("Duration labels are compact")
@@ -201,24 +204,33 @@ struct MenuBarContentTests {
         return h
     }
 
-    @Test("Curve inputs follow the style")
+    @Test("Curve inputs follow the two switches")
     func curveInputs() {
         let h = history([40, 50, 60], [1000, 2000, 3000])
         var config = MenuBarDisplayConfig.default
+        config.style = .curve
 
-        config.style = .temperatureCurve
+        config.showTemperature = true
+        config.showRPM = false
         var curves = MenuBarContent.curves(config, history: h)
         #expect(curves.count == 1)
         #expect(curves[0].values == [40, 50, 60])
 
-        config.style = .rpmCurve
+        config.showTemperature = false
+        config.showRPM = true
         curves = MenuBarContent.curves(config, history: h)
         #expect(curves.count == 1)
         #expect(curves[0].values == [1000, 2000, 3000])
 
-        config.style = .dualCurve
+        config.showTemperature = true
         #expect(MenuBarContent.curves(config, history: h).count == 2)
 
+        // Both off draws nothing, which the renderer shows as the icon alone.
+        config.showTemperature = false
+        config.showRPM = false
+        #expect(MenuBarContent.curves(config, history: h).isEmpty)
+
+        config.showTemperature = true
         config.style = .numbers
         #expect(MenuBarContent.curves(config, history: h).isEmpty)
     }
@@ -227,9 +239,11 @@ struct MenuBarContentTests {
     func curveSkipsUnreadable() {
         let h = history([40, nil, 60], [nil, 2000, nil])
         var config = MenuBarDisplayConfig.default
-        config.style = .temperatureCurve
+        config.style = .curve
+        config.showTemperature = true
         #expect(MenuBarContent.curves(config, history: h)[0].values == [40, 60])
-        config.style = .rpmCurve
+        config.showTemperature = false
+        config.showRPM = true
         #expect(MenuBarContent.curves(config, history: h)[0].values == [2000])
     }
 

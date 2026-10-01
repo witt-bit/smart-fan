@@ -16,7 +16,7 @@
 
 目标：
 
-1. 菜单栏内容可自定义：数值、温度曲线、转速曲线、双曲线叠加。
+1. 菜单栏内容可自定义：**数值**或**曲线**两种样式，由「显示温度」「显示转速」两个勾选决定显示哪些读数。
 2. 新增温度度量：**均温**（所有传感器平均）与**体感温度**（暂取电池温度）。
 3. 曲线可配置采样频率与窗口长度。
 4. 新增**首选项主窗口**承载全部配置；菜单栏**右键只切换 Profile**。
@@ -45,14 +45,15 @@
 
 ## 4. 显示样式规格
 
-`MenuBarStyle` 四选一：
+`MenuBarStyle` 二选一（**2026-10-02 合并，见本文末「变更记录」**）：
 
 | 样式 | 布局 |
 |---|---|
 | `numbers` 数值 | 图标在左；温度在图标**右上**、转速在**右下**（两行）；只选一个数字时单独显示在图标**右侧**（垂直居中）；**两个都关则只显示图标**；单位显示可配置 |
-| `temperatureCurve` 温度曲线 | 一个小曲线窗，仅温度 |
-| `rpmCurve` 转速曲线 | 一个小曲线窗，仅转速 |
-| `dualCurve` 双曲线 | **上下分带**：温度占上半、转速占下半，各自独立归一化（不叠加） |
+| `curve` 曲线 | 一个小曲线窗：**上下分带**，温度占上半、转速占下半，各自独立归一化（不叠加）；两个勾选决定画哪几条，**两个都关则只显示图标** |
+
+> 原先的 `temperatureCurve` / `rpmCurve` / `dualCurve` 三个样式已合并为 `curve` + 两个勾选。
+> 旧名保留在枚举里**仅为解码**，`normalized()` 会把它们折成新模型，老配置不会丢。
 
 **曲线设置**
 
@@ -127,8 +128,12 @@
 ## 5. 配置数据模型（**已冻结**）
 
 ```swift
-public enum MenuBarStyle: String, Codable, CaseIterable {
-    case numbers, temperatureCurve, rpmCurve, dualCurve
+public enum MenuBarStyle: String, Codable, Sendable {
+    case numbers, curve
+    // 仅解码用（旧配置迁移），UI 不提供
+    case temperatureCurve, rpmCurve, dualCurve
+
+    public static let offered: [MenuBarStyle] = [.numbers, .curve]
 }
 public enum TemperatureMetric: String, Codable, CaseIterable {
     case average    // 均温（所有传感器平均，含电池）
@@ -326,9 +331,9 @@ AppDelegate
   - 文件：`Sources/SmartFanApp/MenuBarLabel.swift`（`makeCurve` + `curveWidth`）、`MenuBarContent.curves/image`、`StatusItemController`、`MenuBarPreview`
   - 完成：画布宽 40pt、高**占满菜单栏**；颜色 温度 `systemOrange` / 转速 `systemTeal`；**各自独立 min/max 归一化**（可叠加）；空/单点画中线；告警时整条曲线变红（对应图标变红）。彩色非模板。
   - 注：状态栏与首选项预览共用 `MenuBarContent.image(...)`，不会脱节。
-  - DoD：✅ 三种曲线样式 + 空/单点/多点 + 告警态均渲染（单测覆盖）。
+  - DoD：✅ 曲线样式（合并后一种，两条曲线可分别开关）+ 空/单点/多点 + 告警态均渲染（单测覆盖）。
 - [x] **MB-3.3 曲线设置 UI**
-  - 完成：样式分段选择（数值 / 温度曲线 / 转速曲线 / 双曲线叠加）= 曲线选择；采样频率（1/2/3/5/10s）与时间窗口（10/30/60s/3min）**仅曲线样式下显示**（MB-2.4 已随修复落地）；右上实时预览同步。
+  - 完成：样式分段选择（**数值 / 曲线**，2026-10-02 由四选一合并）+「显示温度」「显示转速」两个勾选；采样频率（1/2/3/5/10s）与时间窗口（10/30/60s/3min）**仅在曲线样式且至少勾选一项时显示**；右上实时预览同步。
   - DoD：✅ 改动实时反映；极端组合（10s×3min、1s×10s 等）由 `MenuBarHistoryTests.extremeCombinations` 覆盖。
 
 ### 阶段 P4 —— 收尾
@@ -506,9 +511,7 @@ AppDelegate
 | Check for Updates | 检查更新 |
 | Menu Bar Style | 菜单栏样式 |
 | Icon + Numbers | 数值 |
-| Temperature Curve | 温度曲线 |
-| RPM Curve | 转速曲线 |
-| Dual Curve | 双曲线 |
+| Curve | 曲线 |
 | Preview | 预览 |
 | Show Temperature | 显示温度 |
 | Show RPM | 显示转速 |
@@ -563,3 +566,19 @@ bash scripts/setup.sh      # 安装后手动验：菜单栏各样式 / 右键切
 
 > 本机只有 CommandLineTools，`swift test` 需加
 > `-Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`（CI 的 macos-15 不需要）。
+
+---
+
+## 变更记录
+
+### 2026-10-02：三种曲线样式合并为一种
+
+- **改动**：`MenuBarStyle` 由 `numbers / temperatureCurve / rpmCurve / dualCurve` 四选一，
+  改为 `numbers / curve` 二选一；画哪几条曲线由已有的「显示温度」「显示转速」两个勾选决定。
+- **理由**：「温度曲线 / 转速曲线 / 双曲线」本质是同一件事的三个组合，
+  与数值样式下已有的两个勾选重复；合并后只有一套心智模型（勾什么就显示什么）。
+- **随之生效的规则**：温度度量仅在勾选「显示温度」时有效；单位仅在数值样式且至少一个数字时有效；
+  采样频率与窗口**仅在曲线样式且至少勾选一项**时显示。
+- **兼容**：旧样式名保留在枚举里仅供解码，`normalized()` 折成 `curve` + 对应勾选，
+  老配置打开后看到的内容与之前一致（`MenuBarDisplayConfigTests.legacyStylesMigrate`）。
+- **空状态**：曲线样式下两个勾选都关 = 只显示图标（与数值样式一致）。

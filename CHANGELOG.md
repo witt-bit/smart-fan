@@ -7,11 +7,15 @@ First release under the SmartFan name. Built on ThermalForge 0.2.3 plus the MacF
 
 ### Menu bar
 
-- **Four display styles.** **Numbers** (the icon, with the temperature above and the RPM
-  below; either can be shown alone, or both off for the icon alone), **temperature curve**,
-  **RPM curve**, and **both curves** in their own bands. Each curve is normalised to its own
-  range: the two metrics have different units, so one shared scale would be meaningless, and
-  correlated readings would otherwise hide one curve behind the other.
+- **Two display styles, one pair of switches.** **Numbers** prints the readings and
+  **Curve** draws them, and **Show Temperature** / **Show RPM** choose which — either
+  alone, or both off for the icon alone. (The temperature curve, RPM curve and both-curves
+  styles used to be three separate choices; they were the same decision the switches
+  already make.) Each curve is normalised to its own range: the two metrics have different
+  units, so one shared scale would be meaningless, and correlated readings would otherwise
+  hide one curve behind the other. Each setting is live only while the reading it belongs
+  to is on: the temperature metric needs a temperature, units need a number, and the
+  sampling interval and window need a curve.
 - **New metrics.** Average temperature (the mean of every sensor, battery included) and a
   feels-like temperature (the battery sensor). The menu bar RPM is the average of the fans
   that actually read.

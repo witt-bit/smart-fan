@@ -27,7 +27,7 @@ struct MenuBarDisplayConfigTests {
     func roundTrip() {
         let defaults = freshDefaults()
         var c = MenuBarDisplayConfig.default
-        c.style = .dualCurve
+        c.style = .curve
         c.showRPM = true
         c.temperatureMetric = .feelsLike
         c.unitDisplay = .full
@@ -60,21 +60,53 @@ struct MenuBarDisplayConfigTests {
     @Test("Only the number style skips curves")
     func usesCurve() {
         #expect(MenuBarStyle.numbers.usesCurve == false)
+        #expect(MenuBarStyle.curve.usesCurve)
+        // The legacy names still read as curve styles, in case one is decoded.
         for style in [MenuBarStyle.temperatureCurve, .rpmCurve, .dualCurve] {
             #expect(style.usesCurve)
         }
+        // And only the two current styles are offered.
+        #expect(MenuBarStyle.offered == [.numbers, .curve])
+    }
+
+    @Test("A configuration saved before the curve styles were merged still shows the same thing")
+    func legacyStylesMigrate() {
+        #expect(MenuBarDisplayConfig(style: .temperatureCurve).normalized()
+                == MenuBarDisplayConfig(style: .curve, showTemperature: true, showRPM: false))
+        #expect(MenuBarDisplayConfig(style: .rpmCurve).normalized()
+                == MenuBarDisplayConfig(style: .curve, showTemperature: false, showRPM: true))
+        #expect(MenuBarDisplayConfig(style: .dualCurve).normalized()
+                == MenuBarDisplayConfig(style: .curve, showTemperature: true, showRPM: true))
+
+        // Through the store, which is where a saved value actually gets migrated.
+        let defaults = freshDefaults()
+        let legacy = #"{"style":"dualCurve","showTemperature":true,"showRPM":true,"temperatureMetric":"average","unitDisplay":"compact","sampleInterval":1,"window":60}"#
+        defaults.set(Data(legacy.utf8), forKey: MenuBarDisplayConfig.defaultsKey)
+        let loaded = MenuBarDisplayConfig.load(from: defaults)
+        #expect(loaded.style == .curve)
+        #expect(loaded.showTemperature && loaded.showRPM)
     }
 
     @Test("The temperature metric is live only when a temperature is shown")
     func temperatureMetricApplies() {
-        // Numbers: follows the temperature toggle.
-        #expect(MenuBarDisplayConfig(style: .numbers, showTemperature: true).temperatureMetricApplies)
-        #expect(!MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: true).temperatureMetricApplies)
-        #expect(!MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: false).temperatureMetricApplies)
-        // Curves: only the ones that draw a temperature.
-        #expect(MenuBarDisplayConfig(style: .temperatureCurve).temperatureMetricApplies)
-        #expect(MenuBarDisplayConfig(style: .dualCurve).temperatureMetricApplies)
-        #expect(!MenuBarDisplayConfig(style: .rpmCurve).temperatureMetricApplies)
+        // One rule for both styles: it follows the temperature switch, because that is the
+        // only thing that decides whether a temperature is on screen at all.
+        for style in [MenuBarStyle.numbers, .curve] {
+            #expect(MenuBarDisplayConfig(style: style, showTemperature: true).temperatureMetricApplies)
+            #expect(!MenuBarDisplayConfig(style: style, showTemperature: false, showRPM: true)
+                        .temperatureMetricApplies)
+            #expect(!MenuBarDisplayConfig(style: style, showTemperature: false, showRPM: false)
+                        .temperatureMetricApplies)
+        }
+    }
+
+    @Test("Curve sampling applies only while a sparkline is drawn")
+    func curveSettingsApply() {
+        #expect(!MenuBarDisplayConfig(style: .numbers, showTemperature: true, showRPM: true).curveSettingsApply)
+        #expect(MenuBarDisplayConfig(style: .curve, showTemperature: true, showRPM: false).curveSettingsApply)
+        #expect(MenuBarDisplayConfig(style: .curve, showTemperature: false, showRPM: true).curveSettingsApply)
+        // Both switches off draws nothing, so the sampling settings are inert.
+        #expect(!MenuBarDisplayConfig(style: .curve, showTemperature: false, showRPM: false).curveSettingsApply)
     }
 
     @Test("The unit suffix is live only when a number is drawn")
@@ -82,9 +114,7 @@ struct MenuBarDisplayConfigTests {
         #expect(MenuBarDisplayConfig(style: .numbers, showTemperature: true).unitDisplayApplies)
         #expect(MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: true).unitDisplayApplies)
         #expect(!MenuBarDisplayConfig(style: .numbers, showTemperature: false, showRPM: false).unitDisplayApplies)
-        for style in [MenuBarStyle.temperatureCurve, .rpmCurve, .dualCurve] {
-            #expect(!MenuBarDisplayConfig(style: style).unitDisplayApplies)
-        }
+        #expect(!MenuBarDisplayConfig(style: .curve, showTemperature: true, showRPM: true).unitDisplayApplies)
     }
 
     @Test("Both numbers may be off (an icon-only item is a valid choice)")

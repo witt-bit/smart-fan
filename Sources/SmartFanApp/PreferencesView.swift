@@ -297,9 +297,7 @@ struct MenuBarPreferences: View {
 
             Picker("", selection: config.style) {
                 Text(language.text("Icon + Numbers")).tag(MenuBarStyle.numbers)
-                Text(language.text("Temperature Curve")).tag(MenuBarStyle.temperatureCurve)
-                Text(language.text("RPM Curve")).tag(MenuBarStyle.rpmCurve)
-                Text(language.text("Dual Curve")).tag(MenuBarStyle.dualCurve)
+                Text(language.text("Curve")).tag(MenuBarStyle.curve)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -310,15 +308,16 @@ struct MenuBarPreferences: View {
             }
             .padding(.vertical, 2)
 
-            if appState.displayConfig.style == .numbers {
-                Divider()
-                // Both may be off: an icon-only item is a valid choice.
-                Toggle(language.text("Show Temperature"), isOn: config.showTemperature)
-                Toggle(language.text("Show RPM"), isOn: config.showRPM)
-            }
+            Divider()
 
-            // The metric applies to the numbers and to the temperature curve, so it is
-            // live only when a temperature is actually shown.
+            // One pair of switches for both styles: the numbers style prints the readings
+            // that are on, the curve style draws them. Both may be off — an icon-only item
+            // is a valid choice — and everything below is live only while the reading it
+            // belongs to is on.
+            Toggle(language.text("Show Temperature"), isOn: config.showTemperature)
+            Toggle(language.text("Show RPM"), isOn: config.showRPM)
+
+            // The metric names the temperature, so it needs one on screen.
             PickerRow(language.text("Temperature Metric"), selection: config.temperatureMetric) {
                 Text(language.text("Average")).tag(TemperatureMetric.average)
                 Text(language.text("Feels-like")).tag(TemperatureMetric.feelsLike)
@@ -326,6 +325,7 @@ struct MenuBarPreferences: View {
             .disabled(!appState.displayConfig.temperatureMetricApplies)
 
             Divider()
+            // Units suffix a number, so only the numbers style uses them.
             PickerRow(language.text("Units"), selection: config.unitDisplay) {
                 Text(language.text("None")).tag(UnitDisplay.none)
                 Text(language.text("Compact")).tag(UnitDisplay.compact)
@@ -333,8 +333,8 @@ struct MenuBarPreferences: View {
             }
             .disabled(!appState.displayConfig.unitDisplayApplies)
 
-            // Curve sampling settings only matter for the curve styles.
-            if appState.displayConfig.style != .numbers {
+            // Sampling only matters while a sparkline is actually drawn.
+            if appState.displayConfig.curveSettingsApply {
                 PickerRow(language.text("Sample Interval"), selection: config.sampleInterval) {
                     ForEach(MenuBarDisplayConfig.sampleIntervals, id: \.self) { value in
                         Text(MenuBarContent.durationLabel(value)).tag(value)

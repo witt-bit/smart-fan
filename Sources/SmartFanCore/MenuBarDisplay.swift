@@ -11,15 +11,25 @@
 import Foundation
 
 /// What the menu bar item shows.
-public enum MenuBarStyle: String, Codable, CaseIterable, Sendable {
-    /// Icon plus temperature / RPM numbers.
+///
+/// The three curve styles used to be separate cases. They are merged into `curve`, with
+/// `showTemperature` / `showRPM` choosing which sparklines are drawn — the same two
+/// switches that choose which numbers the icon style prints. The old names are kept so a
+/// configuration saved before the merge still decodes; `normalized()` folds them.
+public enum MenuBarStyle: String, Codable, Sendable {
+    /// Icon plus the numbers that are switched on.
     case numbers
-    /// A small temperature sparkline.
+    /// Sparklines for the readings that are switched on.
+    case curve
+    /// Legacy: a temperature sparkline only.
     case temperatureCurve
-    /// A small RPM sparkline.
+    /// Legacy: an RPM sparkline only.
     case rpmCurve
-    /// Both curves overlaid in one small canvas.
+    /// Legacy: both sparklines overlaid.
     case dualCurve
+
+    /// What the preferences offer. The legacy cases are decode-only.
+    public static let offered: [MenuBarStyle] = [.numbers, .curve]
 
     /// True when the style draws a sparkline (and therefore needs sample history).
     public var usesCurve: Bool { self != .numbers }
@@ -45,9 +55,11 @@ public enum UnitDisplay: String, Codable, CaseIterable, Sendable {
 
 public struct MenuBarDisplayConfig: Codable, Equatable, Sendable {
     public var style: MenuBarStyle
-    /// numbers style: show the temperature (icon upper-right).
+    /// Numbers style: show the temperature (icon upper-right). Curve style: draw the
+    /// temperature sparkline.
     public var showTemperature: Bool
-    /// numbers style: show the RPM (icon lower-right).
+    /// Numbers style: show the RPM (icon lower-right). Curve style: draw the RPM
+    /// sparkline.
     public var showRPM: Bool
     public var temperatureMetric: TemperatureMetric
     public var unitDisplay: UnitDisplay
@@ -78,17 +90,10 @@ public struct MenuBarDisplayConfig: Codable, Equatable, Sendable {
     public static let sampleIntervals: [TimeInterval] = [1, 2, 3, 5, 10]
     public static let windows: [TimeInterval] = [10, 30, 60, 180]
 
-    /// True when the temperature metric actually affects what is shown: the numbers
-    /// style with the temperature on, or a style that draws the temperature curve.
-    /// The preferences disable the metric picker when this is false, so a control
-    /// that cannot change anything is not left live.
-    public var temperatureMetricApplies: Bool {
-        switch style {
-        case .numbers: return showTemperature
-        case .temperatureCurve, .dualCurve: return true
-        case .rpmCurve: return false
-        }
-    }
+    /// True when the temperature metric actually affects what is shown — whenever a
+    /// temperature is shown at all, in either style. The preferences disable the picker
+    /// when this is false, so a control that cannot change anything is not left live.
+    public var temperatureMetricApplies: Bool { showTemperature }
 
     /// True when the unit suffix actually appears: the numbers style with at least
     /// one number shown. Curve styles draw no text, so the unit is inert there.
@@ -96,11 +101,36 @@ public struct MenuBarDisplayConfig: Codable, Equatable, Sendable {
         style == .numbers && (showTemperature || showRPM)
     }
 
+    /// True when the sampling interval and window change what is drawn: the curve style
+    /// with at least one sparkline switched on.
+    public var curveSettingsApply: Bool {
+        style.usesCurve && (showTemperature || showRPM)
+    }
+
     /// Clamp out-of-range values back to the allowed set. Applied to decoded input
     /// so a hand-edited plist can't put the renderer into a 0-second or 1-point state.
     /// Both numbers may be off — an icon-only item is a valid choice.
     public func normalized() -> MenuBarDisplayConfig {
         var copy = self
+        // A configuration saved before the curve styles were merged still says which
+        // curve it wanted; fold that into the single style plus the two switches, so an
+        // existing user keeps seeing exactly what they saw.
+        switch copy.style {
+        case .temperatureCurve:
+            copy.style = .curve
+            copy.showTemperature = true
+            copy.showRPM = false
+        case .rpmCurve:
+            copy.style = .curve
+            copy.showTemperature = false
+            copy.showRPM = true
+        case .dualCurve:
+            copy.style = .curve
+            copy.showTemperature = true
+            copy.showRPM = true
+        case .numbers, .curve:
+            break
+        }
         if !Self.sampleIntervals.contains(copy.sampleInterval) { copy.sampleInterval = 1 }
         if !Self.windows.contains(copy.window) { copy.window = 60 }
         return copy

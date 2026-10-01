@@ -475,11 +475,11 @@ final class AppState: ObservableObject {
 
     // MARK: - Actions
 
-    /// Record one curve sample. Skipped entirely for the numbers style, so the buffer
-    /// costs nothing when no curve is shown.
+    /// Record one curve sample. Skipped while no sparkline is drawn, so the buffer costs
+    /// nothing for the numbers style and for a curve style with both switches off.
     private func recordMenuBarSample(_ status: ThermalStatus) {
         let config = displayConfig
-        guard config.style.usesCurve else { return }
+        guard config.curveSettingsApply else { return }
         menuBarHistory.append(
             MenuBarHistory.Sample(
                 time: Date(),

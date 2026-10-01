@@ -50,16 +50,11 @@ enum MenuBarContent {
         return value >= 60 && value % 60 == 0 ? "\(value / 60)min" : "\(value)s"
     }
 
-    /// Which readings the config wants shown. Curve styles fall back to the reading
-    /// they will plot until the curve renderer lands (P3), so the style choice is
-    /// visible rather than silently ignored.
+    /// Which readings the style prints as numbers. Curve styles print none — they draw the
+    /// readings the two switches select instead.
     static func visibleReadings(_ config: MenuBarDisplayConfig) -> (temperature: Bool, rpm: Bool) {
-        switch config.style {
-        case .numbers: return (config.showTemperature, config.showRPM)
-        case .temperatureCurve: return (true, false)
-        case .rpmCurve: return (false, true)
-        case .dualCurve: return (true, true)
-        }
+        guard config.style == .numbers else { return (false, false) }
+        return (config.showTemperature, config.showRPM)
     }
 
     /// The menu bar's formatted strings, honouring the config's units and metric.
@@ -78,18 +73,21 @@ enum MenuBarContent {
     static let temperatureCurveColor = NSColor.systemOrange
     static let rpmCurveColor = NSColor.systemTeal
 
-    /// The curves the style asks for, oldest → newest. Readings that were
-    /// unreadable are left out rather than plotted as zero.
+    /// The curves the style asks for, oldest → newest: temperature first, then RPM, so a
+    /// correlated pair still reads as two bands. Readings that were unreadable are left
+    /// out rather than plotted as zero. Empty in the numbers style, and empty when both
+    /// switches are off — which the renderer treats as an icon-only item.
     static func curves(_ config: MenuBarDisplayConfig, history: MenuBarHistory)
         -> [(values: [Float], color: NSColor)] {
-        let temperatures = history.samples.compactMap { $0.temperature }
-        let rpms = history.samples.compactMap { $0.rpm }
-        switch config.style {
-        case .numbers: return []
-        case .temperatureCurve: return [(temperatures, temperatureCurveColor)]
-        case .rpmCurve: return [(rpms, rpmCurveColor)]
-        case .dualCurve: return [(temperatures, temperatureCurveColor), (rpms, rpmCurveColor)]
+        guard config.style.usesCurve else { return [] }
+        var curves: [(values: [Float], color: NSColor)] = []
+        if config.showTemperature {
+            curves.append((history.samples.compactMap { $0.temperature }, temperatureCurveColor))
         }
+        if config.showRPM {
+            curves.append((history.samples.compactMap { $0.rpm }, rpmCurveColor))
+        }
+        return curves
     }
 
     /// The single image the menu bar item shows. Shared with the preferences preview
@@ -102,15 +100,23 @@ enum MenuBarContent {
                       needsWarning: Bool,
                       colorScheme: ColorScheme,
                       statusBarThickness: CGFloat) -> NSImage {
-        if config.style.usesCurve {
-            return MenuBarLabelImage.makeCurve(curves: curves(config, history: history),
-                                                needsWarning: needsWarning,
-                                                statusBarThickness: statusBarThickness)
+        let symbol = MenuBarLabelImage.make(symbol: MenuBarLabel.symbol(for: monitorState),
+                                            temperature: nil, rpm: nil,
+                                            needsWarning: needsWarning, colorScheme: colorScheme,
+                                            statusBarThickness: statusBarThickness)
+        guard config.style.usesCurve else {
+            let reading = readings(config, status: status, fahrenheit: fahrenheit)
+            return MenuBarLabelImage.make(symbol: MenuBarLabel.symbol(for: monitorState),
+                                          temperature: reading.temperature, rpm: reading.rpm,
+                                          needsWarning: needsWarning, colorScheme: colorScheme,
+                                          statusBarThickness: statusBarThickness)
         }
-        let reading = readings(config, status: status, fahrenheit: fahrenheit)
-        return MenuBarLabelImage.make(symbol: MenuBarLabel.symbol(for: monitorState),
-                                      temperature: reading.temperature, rpm: reading.rpm,
-                                      needsWarning: needsWarning, colorScheme: colorScheme,
-                                      statusBarThickness: statusBarThickness)
+        let drawn = curves(config, history: history)
+        // Both switches off in the curve style is the icon-only item, the same choice the
+        // numbers style offers.
+        guard !drawn.isEmpty else { return symbol }
+        return MenuBarLabelImage.makeCurve(curves: drawn,
+                                           needsWarning: needsWarning,
+                                           statusBarThickness: statusBarThickness)
     }
 }
