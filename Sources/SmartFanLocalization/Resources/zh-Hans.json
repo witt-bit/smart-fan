@@ -86,7 +86,7 @@
   "Also in Default mode": "在「默认」模式也生效",
   "Default leaves the fans to the system, so it is left alone.": "「默认」把风扇交给系统，所以默认不干预。",
   "The speed this fan is actually turning, read from its own SMC counter.": "该风扇的实际转速，读取自它自己的 SMC 计数器。",
-  "Hottest CPU core, from the core sensors calibrated for this chip — not the SoC hotspot keys, which read 10–13 °C higher.": "最热的 CPU 核心。用按本机芯片校准的核心传感器键，不含 SoC 热点键（后者高 10–13 °C）。",
+  "Hottest CPU core, from the core sensors calibrated for this chip — not the non-core keys in the same groups (such as Tp0W), which read 3–13 °C higher.": "最热的 CPU 核心。用按本机芯片校准的核心传感器键；不含同组里不是核心温度的那些键（如 Tp0W），它们高 3–13 °C。",
   "Hottest GPU sensor (TG*, Tg*).": "最热的 GPU 传感器（TG*、Tg*）。",
   "Hottest memory sensor (TRDX, Tm*, TMVR).": "最热的内存传感器（TRDX、Tm*、TMVR）。",
   "Hottest SSD sensor (TH*).": "最热的 SSD 传感器（TH*）。",

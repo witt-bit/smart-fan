@@ -86,7 +86,7 @@
   "Also in Default mode": "Also in Default mode",
   "Default leaves the fans to the system, so it is left alone.": "Default leaves the fans to the system, so it is left alone.",
   "The speed this fan is actually turning, read from its own SMC counter.": "The speed this fan is actually turning, read from its own SMC counter.",
-  "Hottest CPU core, from the core sensors calibrated for this chip — not the SoC hotspot keys, which read 10–13 °C higher.": "Hottest CPU core, from the core sensors calibrated for this chip — not the SoC hotspot keys, which read 10–13 °C higher.",
+  "Hottest CPU core, from the core sensors calibrated for this chip — not the non-core keys in the same groups (such as Tp0W), which read 3–13 °C higher.": "Hottest CPU core, from the core sensors calibrated for this chip — not the non-core keys in the same groups (such as Tp0W), which read 3–13 °C higher.",
   "Hottest GPU sensor (TG*, Tg*).": "Hottest GPU sensor (TG*, Tg*).",
   "Hottest memory sensor (TRDX, Tm*, TMVR).": "Hottest memory sensor (TRDX, Tm*, TMVR).",
   "Hottest SSD sensor (TH*).": "Hottest SSD sensor (TH*).",

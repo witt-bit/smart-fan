@@ -18,6 +18,12 @@
 //  Other chips keep a prefix grouping. All keys stay in `status()` and in
 //  `safetyPeakTemp`, so fan control and the safety floor still follow the
 //  hottest point on the die exactly as upstream does.
+//
+//  Measured later on Mac16,1 (M4, not Max): the `TC*` family there is only
+//  `TCHP`/`TCMb`, and `TCMb` equalled the hottest core in every sample — the
+//  deviation comes from the derived `Tp*` keys instead: `Tp0W` was the maximum
+//  in every sample, 3–13 °C above the hottest core. Same conclusion, different
+//  key, so `safetyPeakTemp` reads ~7 °C high on this chip.
 //  See docs/thermal-sensor-calibration-20260924.md.
 //
 

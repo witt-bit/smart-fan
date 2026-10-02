@@ -37,7 +37,7 @@
   "Half fan speed above 90 °C for 10 s, full above 95 °C for 30 s." : "高於 90 °C 持續 10 秒後轉速一半；高於 95 °C 持續 30 秒後轉速最大。",
   "High-temperature protection" : "高溫防護",
   "Homepage" : "項目主頁",
-  "Hottest CPU core, from the core sensors calibrated for this chip — not the SoC hotspot keys, which read 10–13 °C higher." : "最熱的 CPU 核心。用按本機芯片校准的核心傳感器鍵，不含 SoC 熱點鍵（後者高 10–13 °C）。",
+  "Hottest CPU core, from the core sensors calibrated for this chip — not the non-core keys in the same groups (such as Tp0W), which read 3–13 °C higher." : "最熱的 CPU 核心。用按本機芯片校准的核心傳感器鍵；不含同組里不是核心溫度的那些鍵（如 Tp0W），它們高 3–13 °C。",
   "Hottest GPU sensor (TG*, Tg*)." : "最熱的 GPU 傳感器（TG*、Tg*）。",
   "Hottest SSD sensor (TH*)." : "最熱的 SSD 傳感器（TH*）。",
   "Hottest ambient sensor (TAOL, TA0P)." : "最熱的環境傳感器（TAOL、TA0P）。",
