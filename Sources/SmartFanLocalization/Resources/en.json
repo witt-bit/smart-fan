@@ -92,5 +92,20 @@
   "Hottest SSD sensor (TH*).": "Hottest SSD sensor (TH*).",
   "Hottest ambient sensor (TAOL, TA0P).": "Hottest ambient sensor (TAOL, TA0P).",
   "Arithmetic mean of every readable sensor, the battery, ambient and SSD included.": "Arithmetic mean of every readable sensor, the battery, ambient and SSD included.",
-  "Battery temperature (TB0T/TB1T/TB2T and the IOHID battery keys); blank on Macs with no readable battery sensor.": "Battery temperature (TB0T/TB1T/TB2T and the IOHID battery keys); blank on Macs with no readable battery sensor."
+  "Battery temperature (TB0T/TB1T/TB2T and the IOHID battery keys); blank on Macs with no readable battery sensor.": "Battery temperature (TB0T/TB1T/TB2T and the IOHID battery keys); blank on Macs with no readable battery sensor.",
+  "Sensors": "Sensors",
+  "{provided} of {total} keys on this Mac.": "{provided} of {total} keys on this Mac.",
+  "CPU cores": "CPU cores",
+  "CPU keys grouped by prefix (this chip has no table)": "CPU keys grouped by prefix (this chip has no table)",
+  "CPU group keys that are not a core temperature": "CPU group keys that are not a core temperature",
+  "Battery": "Battery",
+  "Power delivery": "Power delivery",
+  "Other": "Other",
+  "Fan control": "Fan control",
+  "Not published on this Mac": "Not published on this Mac",
+  "Outside 0–150 °C": "Outside 0–150 °C",
+  "IOHID identifies it as a battery sensor": "IOHID identifies it as a battery sensor",
+  "A die key under 10 °C: a gated core's placeholder": "A die key under 10 °C: a gated core's placeholder",
+  "CPU core keys come from this chip's calibrated table.": "CPU core keys come from this chip's calibrated table.",
+  "No calibrated core table for this chip: the CPU keys are grouped by prefix.": "No calibrated core table for this chip: the CPU keys are grouped by prefix."
 }

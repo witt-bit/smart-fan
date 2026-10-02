@@ -21,7 +21,12 @@ struct LocalizedPanelTests {
             .init(index: 0, actualRPM: 5777, targetRPM: 5777, minRPM: 1350, maxRPM: 5777, mode: "manual"),
             .init(index: 1, actualRPM: 5756, targetRPM: 5777, minRPM: 1350, maxRPM: 5777, mode: "manual"),
         ], temperatures: ["TCMb": 100, "Tg05": 73.7, "TRDX": 43.4, "TH0x": 26.3, "TAOL": 24.4],
-           averageTemp: 60, batteryTemp: 31, fanRPM: 5766)
+           averageTemp: 60, batteryTemp: 31, fanRPM: 5766,
+           // The sensors page needs all three states in one fixture: a key the app kept, one
+           // it dropped with a reason, and keys this Mac does not publish.
+           rawTemperatures: ["TCMb": 100, "Tp0W": 104.2, "Tg05": 73.7, "TRDX": 43.4,
+                             "TH0x": 26.3, "TAOL": 24.4],
+           sensorDrops: ["Tp0W": .belowDieFloor])
 
         // Every alert state is exercised: the Fans page carries the daemon-down
         // banner, the About page carries update-needed and update-available.
@@ -41,6 +46,7 @@ struct LocalizedPanelTests {
             AnyView(FansPreferences()),
             AnyView(GeneralPreferences()),
             AnyView(MenuBarPreferences()),
+            AnyView(SensorPreferences()),
             AnyView(AboutPreferences()),
         ]
 

@@ -77,7 +77,7 @@ public struct ThermalStatus: Encodable {
     public let sensorDrops: [String: SensorDrop]
 
     /// The wire format is unchanged: these two are for the preferences' sensor list only, and
-    /// the daemon's status JSON (and the CLI's `status` output) has no use for ~66 raw keys.
+    /// the daemon's status JSON (and the CLI's `status` output) has no use for every raw key.
     enum CodingKeys: String, CodingKey {
         case fans, temperatures, averageTemp, batteryTemp, fanRPM
     }

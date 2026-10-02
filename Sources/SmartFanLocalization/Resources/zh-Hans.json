@@ -92,5 +92,20 @@
   "Hottest SSD sensor (TH*).": "最热的 SSD 传感器（TH*）。",
   "Hottest ambient sensor (TAOL, TA0P).": "最热的环境传感器（TAOL、TA0P）。",
   "Arithmetic mean of every readable sensor, the battery, ambient and SSD included.": "所有可读传感器的算术平均，包含电池、环境与 SSD。",
-  "Battery temperature (TB0T/TB1T/TB2T and the IOHID battery keys); blank on Macs with no readable battery sensor.": "电池温度（TB0T/TB1T/TB2T 与 IOHID 电池键）；无电池传感器的机型不显示。"
+  "Battery temperature (TB0T/TB1T/TB2T and the IOHID battery keys); blank on Macs with no readable battery sensor.": "电池温度（TB0T/TB1T/TB2T 与 IOHID 电池键）；无电池传感器的机型不显示。",
+  "Sensors": "传感器",
+  "{provided} of {total} keys on this Mac.": "本机提供 {provided} / {total} 个键。",
+  "CPU cores": "CPU 核心",
+  "CPU keys grouped by prefix (this chip has no table)": "CPU 键（按前缀分组，本机无校准表）",
+  "CPU group keys that are not a core temperature": "CPU 同组键（不是核心温度）",
+  "Battery": "电池",
+  "Power delivery": "供电",
+  "Other": "其他",
+  "Fan control": "风扇控制",
+  "Not published on this Mac": "本机不发布此键",
+  "Outside 0–150 °C": "超出 0–150 °C 合理范围",
+  "IOHID identifies it as a battery sensor": "IOHID 判定为电池传感器",
+  "A die key under 10 °C: a gated core's placeholder": "芯片键低于 10 °C：核心关闭时的占位读数",
+  "CPU core keys come from this chip's calibrated table.": "CPU 核心键来自本机芯片的校准表。",
+  "No calibrated core table for this chip: the CPU keys are grouped by prefix.": "本机芯片没有校准表：CPU 键按前缀分组。"
 }
