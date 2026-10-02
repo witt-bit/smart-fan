@@ -116,15 +116,12 @@ struct FansPreferences: View {
                 monitorStateLabel
             }
 
-            // The number the fan logic actually compares against, next to the status it
-            // produces. Everything below is either the display side or a control; this is the
-            // input the fan decisions are made from.
-            LabeledValue(language.text("Control basis"), value: format(appState.controlBasisTemp),
-                         hint: language.text("What the mode curves, the sustained window and the high-temperature ladder compare their thresholds against: the hottest key in the TC/Tp/TG/Tg groups. Those groups include keys that are not core temperatures, so it reads a few degrees above the CPU row — it is not the same quantity. The Sensors page lists which key is which."))
+            // Shown only while protection is holding the fans: the status row above says
+            // SAFETY, this says which step.
             if appState.protectionStage != .off {
                 LabeledValue(language.text("Protection"),
                              value: language.text(appState.protectionStage == .fullSpeed ? "Full speed" : "Half speed"),
-                             hint: language.text("Which step of the high-temperature protection ladder is holding the fans right now."))
+                             hint: language.text("High-temperature protection is holding the fans at half or full speed."))
             }
 
             Divider()
@@ -194,22 +191,10 @@ struct FansPreferences: View {
             Divider()
 
             if let status = appState.latestStatus {
-                Text(language.text("Reference readings"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                // The one place that can say it plainly: the menu bar number is a reading, not
-                // the control basis, and no reading changes what the fans do.
-                Text(language.text("The display side: the menu bar number is one of these. Nothing here changes what the fans do — the control basis above is what the fan logic uses."))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-
                 ForEach(status.fans, id: \.index) { fan in
                     LabeledValue(language.text("Fan {index}", ["index": String(fan.index)]),
-                                 value: language.text("Actual {actual} · target {target} RPM",
-                                                      ["actual": String(fan.actualRPM),
-                                                       "target": String(fan.targetRPM)]),
-                                 hint: language.text("Actual is the fan's own counter (F{index}Ac). Target is what it was last told (F{index}Tg): the mode's target, the current step of a ramp, or the system's own value while a hands-off mode is selected — so the two differing means a write is in flight, or failed and is being retried."))
+                                 value: language.text("{rpm} RPM", ["rpm": String(fan.actualRPM)]),
+                                 hint: language.text("This fan's current speed."))
                 }
                 // CPU and GPU use the panel's own definitions in Core, not a raw prefix
                 // sweep: the `TC`/`Tp` groups also carry derived keys that read 10–13 °C
@@ -222,19 +207,19 @@ struct FansPreferences: View {
                 // combined, so a reading that differs from another app can be traced
                 // without reading the source.
                 LabeledValue(language.text("CPU"), value: format(status.displayedCPUTemp),
-                             hint: language.text("Hottest CPU core, from the core sensors calibrated for this chip — not the SoC hotspot keys, which read 10–13 °C higher."))
+                             hint: language.text("The hottest CPU core."))
                 LabeledValue(language.text("GPU"), value: format(status.displayedGPUTemp),
-                             hint: language.text("Hottest GPU sensor (TG*, Tg*)."))
+                             hint: language.text("The hottest GPU sensor."))
                 LabeledValue(language.text("RAM"), value: temp(prefixes: ["TR", "Tm", "TM"], status: status),
-                             hint: language.text("Hottest memory sensor (TRDX, Tm*, TMVR)."))
+                             hint: language.text("Memory temperature."))
                 LabeledValue(language.text("SSD"), value: temp(prefixes: ["TH"], status: status),
-                             hint: language.text("Hottest SSD sensor (TH*)."))
+                             hint: language.text("SSD temperature."))
                 LabeledValue(language.text("Ambient"), value: temp(prefixes: ["TA"], status: status),
-                             hint: language.text("Hottest ambient sensor (TAOL, TA0P)."))
+                             hint: language.text("Air temperature inside the machine."))
                 LabeledValue(language.text("Average"), value: format(status.averageTemp),
-                             hint: language.text("Arithmetic mean of every readable sensor, the battery, ambient and SSD included."))
+                             hint: language.text("The average of every sensor."))
                 LabeledValue(language.text("Feels-like"), value: format(status.batteryTemp),
-                             hint: language.text("Battery temperature (TB0T/TB1T/TB2T and the IOHID battery keys); blank on Macs with no readable battery sensor."))
+                             hint: language.text("Battery temperature."))
             } else {
                 Text(language.text("Reading sensors...")).foregroundStyle(.secondary)
             }
@@ -469,33 +454,43 @@ private struct PickerRow<Value: Hashable, Content: View>: View {
 
 // MARK: - Sensors
 
-/// Every key the app probes: the value the SMC returned, whether the app kept it and why
-/// not, and what reads it.
+/// Every sensor this Mac reports, in three columns: what it belongs to, its key, and its
+/// reading, right-aligned so the numbers form a column.
 ///
-/// The Fans page shows derived readings; this is the raw material they are derived from, and
-/// the only place the fan logic's own basis is visible (docs/sensor-list-plan.md). Keys the
-/// app *dropped* are listed too: a key that reads something and is not used has to be
-/// visible with its reason, or the list looks like it is hiding readings — the difference
-/// between this list and the CLI's full `discover` dump is exactly what needs explaining.
+/// Keys this Mac does not publish are left out — a list of "not available" is not a sensor
+/// list. Keys the app reads and then discards stay, under an "Ignored" heading, so nothing
+/// that yields a value is hidden. No per-row annotation: what needs explaining is said once,
+/// above the list. See docs/sensor-list-plan.md.
 struct SensorPreferences: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var language: AppLanguageStore
 
+    /// One line of the list: a coarse heading and the key behind it.
+    private struct Entry {
+        let category: String
+        let reading: SensorReading
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let status = appState.latestStatus {
-                let rows = status.sensorReadings()
-                header(rows)
+                let entries = list(status.sensorReadings())
+                Text(language.text("{count} sensors read on this Mac.",
+                                   ["count": String(entries.count)]))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                // Only worth saying when it is true: on a chip with no table the CPU keys are
+                // grouped by prefix, which is all we know about them.
+                if ThermalStatus.validatedCoreKeys.isEmpty {
+                    Text(language.text("No calibrated core table for this chip: CPU keys are grouped by prefix."))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
                 Divider()
-                // Lazy: 57 rows on this Mac, rebuilt with every status update, most off screen.
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(groups(rows), id: \.kind) { group in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(language.text(heading(group.kind)))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            ForEach(group.rows, id: \.key) { SensorRow(reading: $0) }
-                        }
+                // Lazy: around forty rows, rebuilt with every status update, most off screen.
+                LazyVStack(alignment: .leading, spacing: 3) {
+                    ForEach(entries, id: \.reading.key) { entry in
+                        SensorRow(category: entry.category, reading: entry.reading)
                     }
                 }
             } else {
@@ -504,111 +499,68 @@ struct SensorPreferences: View {
         }
     }
 
-    @ViewBuilder
-    private func header(_ rows: [SensorReading]) -> some View {
-        let provided = rows.filter { $0.raw != nil }.count
-        VStack(alignment: .leading, spacing: 2) {
-            Text(language.text("{provided} of {total} keys on this Mac.",
-                               ["provided": String(provided), "total": String(rows.count)]))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            // Which classification is in force, so the list never implies more than it knows:
-            // CPU keys are either per-chip calibrated or merely grouped by prefix.
-            Text(ThermalStatus.validatedCoreKeys.isEmpty
-                 ? language.text("No calibrated core table for this chip: the CPU keys are grouped by prefix.")
-                 : language.text("CPU core keys come from this chip's calibrated table."))
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+    /// What the list shows, in order: every key that read something, grouped by what it
+    /// belongs to, with the ignored ones last.
+    private func list(_ rows: [SensorReading]) -> [Entry] {
+        rows.filter { $0.raw != nil }
+            .map { Entry(category: category($0), reading: $0) }
+            .sorted { left, right in
+                let (l, r) = (rank(left), rank(right))
+                return l == r ? left.reading.key < right.reading.key : l < r
+            }
     }
 
-    private func groups(_ rows: [SensorReading]) -> [(kind: SensorRole.Kind, rows: [SensorReading])] {
-        SensorRole.Kind.allCases.compactMap { kind in
-            let matching = rows.filter { $0.role.kind == kind }
-            return matching.isEmpty ? nil : (kind, matching)
-        }
+    private func rank(_ entry: Entry) -> Int {
+        entry.category == "Ignored"
+            ? SensorRole.Kind.allCases.count
+            : (SensorRole.Kind.allCases.firstIndex(of: entry.reading.role.kind) ?? 0)
     }
 
-    private func heading(_ kind: SensorRole.Kind) -> String {
-        switch kind {
-        case .cpuCore: return "CPU cores"
-        case .cpuPrefix: return "CPU keys grouped by prefix (this chip has no table)"
-        case .cpuDerived: return "CPU group keys that are not a core temperature"
+    /// A coarse heading, in the same words the readings above use where they overlap.
+    private func category(_ row: SensorReading) -> String {
+        guard row.drop == nil else { return "Ignored" }
+        switch row.role.kind {
+        case .cpuCore, .cpuPrefix: return "CPU"
+        case .cpuDerived: return "CPU derived"
         case .gpu: return "GPU"
         case .memory: return "RAM"
         case .ssd: return "SSD"
         case .ambient: return "Ambient"
         case .battery: return "Battery"
-        case .power: return "Power delivery"
+        case .power: return "Power"
         case .other: return "Other"
         }
     }
 }
 
-/// One key: its reading, why the app did or did not use it, and who uses it.
+/// One sensor: what it belongs to, its key, and its value.
 private struct SensorRow: View {
+    let category: String
     let reading: SensorReading
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var language: AppLanguageStore
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(spacing: 10) {
+            Text(language.text(category))
+                .foregroundStyle(.secondary)
+                .frame(width: 74, alignment: .leading)
             Text(reading.key)
                 .font(.system(.callout, design: .monospaced))
-                .frame(width: 54, alignment: .leading)
+            Spacer(minLength: 8)
             Text(value)
                 .font(.system(.callout, design: .monospaced))
-                .foregroundStyle(reading.drop == nil ? .primary : .secondary)
-                .frame(width: 78, alignment: .trailing)
-            Text(note)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
+                .monospacedDigit()
         }
     }
 
-    /// The value the app works with, or the raw one when it dropped the key: showing a
-    /// dropped reading is the point of the list.
     private var value: String {
-        if let accepted = reading.accepted { return temperature(accepted) }
-        if let raw = reading.raw { return temperature(raw) }
-        return "—"
-    }
-
-    private var note: String {
-        switch reading.drop {
-        case nil: return usedBy
-        case .absent: return language.text("Not published on this Mac")
-        case .outOfRange: return language.text("Outside 0–150 °C")
-        case .batteryKey: return language.text("IOHID identifies it as a battery sensor")
-        case .belowDieFloor: return language.text("A die key under 10 °C: a gated core's placeholder")
-        }
-    }
-
-    private var usedBy: String {
-        reading.role.uses.map { language.text(label($0)) }.joined(separator: " · ")
-    }
-
-    private func label(_ use: SensorRole.Use) -> String {
-        switch use {
-        case .cpu: return "CPU"
-        case .gpu: return "GPU"
-        case .ram: return "RAM"
-        case .ssd: return "SSD"
-        case .ambient: return "Ambient"
-        case .feelsLike: return "Feels-like"
-        case .average: return "Average"
-        case .control: return "Fan control"
-        }
-    }
-
-    private func temperature(_ celsius: Float) -> String {
+        guard let celsius = reading.accepted ?? reading.raw else { return "—" }
         let display = appState.useFahrenheit ? celsius * 9 / 5 + 32 : celsius
         return String(format: "%.1f°%@", display, appState.useFahrenheit ? "F" : "C")
     }
 }
+
 
 // MARK: - About
 
