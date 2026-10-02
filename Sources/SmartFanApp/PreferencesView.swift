@@ -182,8 +182,14 @@ struct FansPreferences: View {
                     LabeledValue(language.text("Fan {index}", ["index": String(fan.index)]),
                                  value: language.text("{rpm} RPM", ["rpm": String(fan.actualRPM)]))
                 }
-                LabeledValue(language.text("CPU"), value: temp(prefixes: ["TC", "Tp"], status: status))
-                LabeledValue(language.text("GPU"), value: temp(prefixes: ["TG", "Tg"], status: status))
+                // CPU and GPU use the panel's own definitions in Core, not a raw prefix
+                // sweep: the `TC`/`Tp` groups also carry derived keys that read 10–13 °C
+                // above the cores (`Tp0W` was the max in every sample here), and the menu
+                // bar headline is computed from the same core reading. Measured before this
+                // change the row sat 0.3–10.7 °C (usually 7–10) above the headline.
+                // See docs/upstream-divergence.md and docs/thermal-sensor-calibration-20260924.md.
+                LabeledValue(language.text("CPU"), value: format(status.displayedCPUTemp))
+                LabeledValue(language.text("GPU"), value: format(status.displayedGPUTemp))
                 LabeledValue(language.text("RAM"), value: temp(prefixes: ["TR", "Tm", "TM"], status: status))
                 LabeledValue(language.text("SSD"), value: temp(prefixes: ["TH"], status: status))
                 LabeledValue(language.text("Ambient"), value: temp(prefixes: ["TA"], status: status))
