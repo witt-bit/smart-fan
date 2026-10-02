@@ -116,6 +116,17 @@ struct FansPreferences: View {
                 monitorStateLabel
             }
 
+            // The number the fan logic actually compares against, next to the status it
+            // produces. Everything below is either the display side or a control; this is the
+            // input the fan decisions are made from.
+            LabeledValue(language.text("Control basis"), value: format(appState.controlBasisTemp),
+                         hint: language.text("What the mode curves, the sustained window and the high-temperature ladder compare their thresholds against: the hottest key in the TC/Tp/TG/Tg groups. Those groups include keys that are not core temperatures, so it reads a few degrees above the CPU row — it is not the same quantity. The Sensors page lists which key is which."))
+            if appState.protectionStage != .off {
+                LabeledValue(language.text("Protection"),
+                             value: language.text(appState.protectionStage == .fullSpeed ? "Full speed" : "Half speed"),
+                             hint: language.text("Which step of the high-temperature protection ladder is holding the fans right now."))
+            }
+
             Divider()
 
             // Alerts, in priority order: fan control is impossible without the daemon;
@@ -183,10 +194,22 @@ struct FansPreferences: View {
             Divider()
 
             if let status = appState.latestStatus {
+                Text(language.text("Reference readings"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                // The one place that can say it plainly: the menu bar number is a reading, not
+                // the control basis, and no reading changes what the fans do.
+                Text(language.text("The display side: the menu bar number is one of these. Nothing here changes what the fans do — the control basis above is what the fan logic uses."))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 ForEach(status.fans, id: \.index) { fan in
                     LabeledValue(language.text("Fan {index}", ["index": String(fan.index)]),
-                                 value: language.text("{rpm} RPM", ["rpm": String(fan.actualRPM)]),
-                                 hint: language.text("The speed this fan is actually turning, read from its own SMC counter."))
+                                 value: language.text("Actual {actual} · target {target} RPM",
+                                                      ["actual": String(fan.actualRPM),
+                                                       "target": String(fan.targetRPM)]),
+                                 hint: language.text("Actual is the fan's own counter (F{index}Ac). Target is what it was last told (F{index}Tg): the mode's target, the current step of a ramp, or the system's own value while a hands-off mode is selected — so the two differing means a write is in flight, or failed and is being retried."))
                 }
                 // CPU and GPU use the panel's own definitions in Core, not a raw prefix
                 // sweep: the `TC`/`Tp` groups also carry derived keys that read 10–13 °C

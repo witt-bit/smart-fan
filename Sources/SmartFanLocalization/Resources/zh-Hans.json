@@ -1,6 +1,5 @@
 {
   "Fan {index}": "风扇 {index}",
-  "{rpm} RPM": "{rpm} RPM",
   "Ambient": "环境",
   "Reading sensors...": "正在读取传感器…",
   "Balanced": "均衡",
@@ -85,7 +84,6 @@
   "Half fan speed above 90 °C for 10 s, full above 95 °C for 30 s.": "高于 90 °C 持续 10 秒后转速一半；高于 95 °C 持续 30 秒后转速最大。",
   "Also in Default mode": "在「默认」模式也生效",
   "Default leaves the fans to the system, so it is left alone.": "「默认」把风扇交给系统，所以默认不干预。",
-  "The speed this fan is actually turning, read from its own SMC counter.": "该风扇的实际转速，读取自它自己的 SMC 计数器。",
   "Hottest CPU core, from the core sensors calibrated for this chip — not the non-core keys in the same groups (such as Tp0W), which read 3–13 °C higher.": "最热的 CPU 核心。用按本机芯片校准的核心传感器键；不含同组里不是核心温度的那些键（如 Tp0W），它们高 3–13 °C。",
   "Hottest GPU sensor (TG*, Tg*).": "最热的 GPU 传感器（TG*、Tg*）。",
   "Hottest memory sensor (TRDX, Tm*, TMVR).": "最热的内存传感器（TRDX、Tm*、TMVR）。",
@@ -107,5 +105,15 @@
   "IOHID identifies it as a battery sensor": "IOHID 判定为电池传感器",
   "A die key under 10 °C: a gated core's placeholder": "芯片键低于 10 °C：核心关闭时的占位读数",
   "CPU core keys come from this chip's calibrated table.": "CPU 核心键来自本机芯片的校准表。",
-  "No calibrated core table for this chip: the CPU keys are grouped by prefix.": "本机芯片没有校准表：CPU 键按前缀分组。"
+  "No calibrated core table for this chip: the CPU keys are grouped by prefix.": "本机芯片没有校准表：CPU 键按前缀分组。",
+  "Control basis": "控制基准",
+  "Protection": "防护阶段",
+  "Half speed": "半速",
+  "Full speed": "满速",
+  "Actual {actual} · target {target} RPM": "实测 {actual} · 目标 {target} RPM",
+  "Reference readings": "参考读数",
+  "The display side: the menu bar number is one of these. Nothing here changes what the fans do — the control basis above is what the fan logic uses.": "这里是显示侧：菜单栏数字就是其中之一。这些数字都不会改变风扇行为 —— 上面那行「控制基准」才是风扇逻辑使用的值。",
+  "What the mode curves, the sustained window and the high-temperature ladder compare their thresholds against: the hottest key in the TC/Tp/TG/Tg groups. Those groups include keys that are not core temperatures, so it reads a few degrees above the CPU row — it is not the same quantity. The Sensors page lists which key is which.": "模式曲线、持续窗口与高温防护阶梯用来比较阈值的那个值：TC/Tp/TG/Tg 各组中最热的键。这些组里含不是核心温度的键，因此它比 CPU 行高几度 —— 两者不是同一个量。「传感器」页列出了每个键分别是什么。",
+  "Which step of the high-temperature protection ladder is holding the fans right now.": "高温防护阶梯当前正持有风扇的档位。",
+  "Actual is the fan's own counter (F{index}Ac). Target is what it was last told (F{index}Tg): the mode's target, the current step of a ramp, or the system's own value while a hands-off mode is selected — so the two differing means a write is in flight, or failed and is being retried.": "实测取自该风扇自己的计数器（F{index}Ac）；目标是它最近一次收到的指令（F{index}Tg）—— 可能是模式的目标、爬升中的当前档位，或「交给系统」时系统自己设的值。两者不一致 = 写入还在路上，或失败后正在重试。"
 }

@@ -63,6 +63,20 @@ First release under the SmartFan name. Built on ThermalForge 0.2.3 plus the MacF
 - The background service's own emergency floor moved above the ladder's range (105 °C),
   so the two can no longer pre-empt each other on the same fan.
 
+### Sensors and the number behind the fans
+
+- **A Sensors page** lists every SMC key the app probes — its value, whether the app kept it,
+  and if not why (not published on this Mac, outside 0–150 °C, IOHID says it is a battery
+  sensor, a die key under 10 °C). Kept keys say what reads them, so the page also shows
+  which keys drive the fan logic.
+- **The Fans page shows the control basis**, the number the mode curves, the sustained window
+  and the high-temperature ladder actually compare their thresholds against. It is not the CPU
+  row: it is the hottest key in the `TC`/`Tp`/`TG`/`Tg` groups, which includes keys that are
+  not core temperatures, so it reads a few degrees higher — which is why the fans can act
+  while the panel shows a cooler CPU.
+- Each fan row now shows **actual and target RPM**, and the readings are labelled as the
+  display side, so nothing on the page is mistaken for what drives the fan.
+
 ### Background service
 
 - **The app manages it.** A missing, outdated or unresponsive service is installed, updated

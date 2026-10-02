@@ -1,6 +1,5 @@
 {
   "Fan {index}": "Fan {index}",
-  "{rpm} RPM": "{rpm} RPM",
   "Ambient": "Ambient",
   "Reading sensors...": "Reading sensors...",
   "Balanced": "Balanced",
@@ -85,7 +84,6 @@
   "Half fan speed above 90 °C for 10 s, full above 95 °C for 30 s.": "Half fan speed above 90 °C for 10 s, full above 95 °C for 30 s.",
   "Also in Default mode": "Also in Default mode",
   "Default leaves the fans to the system, so it is left alone.": "Default leaves the fans to the system, so it is left alone.",
-  "The speed this fan is actually turning, read from its own SMC counter.": "The speed this fan is actually turning, read from its own SMC counter.",
   "Hottest CPU core, from the core sensors calibrated for this chip — not the non-core keys in the same groups (such as Tp0W), which read 3–13 °C higher.": "Hottest CPU core, from the core sensors calibrated for this chip — not the non-core keys in the same groups (such as Tp0W), which read 3–13 °C higher.",
   "Hottest GPU sensor (TG*, Tg*).": "Hottest GPU sensor (TG*, Tg*).",
   "Hottest memory sensor (TRDX, Tm*, TMVR).": "Hottest memory sensor (TRDX, Tm*, TMVR).",
@@ -107,5 +105,15 @@
   "IOHID identifies it as a battery sensor": "IOHID identifies it as a battery sensor",
   "A die key under 10 °C: a gated core's placeholder": "A die key under 10 °C: a gated core's placeholder",
   "CPU core keys come from this chip's calibrated table.": "CPU core keys come from this chip's calibrated table.",
-  "No calibrated core table for this chip: the CPU keys are grouped by prefix.": "No calibrated core table for this chip: the CPU keys are grouped by prefix."
+  "No calibrated core table for this chip: the CPU keys are grouped by prefix.": "No calibrated core table for this chip: the CPU keys are grouped by prefix.",
+  "Control basis": "Control basis",
+  "Protection": "Protection",
+  "Half speed": "Half speed",
+  "Full speed": "Full speed",
+  "Actual {actual} · target {target} RPM": "Actual {actual} · target {target} RPM",
+  "Reference readings": "Reference readings",
+  "The display side: the menu bar number is one of these. Nothing here changes what the fans do — the control basis above is what the fan logic uses.": "The display side: the menu bar number is one of these. Nothing here changes what the fans do — the control basis above is what the fan logic uses.",
+  "What the mode curves, the sustained window and the high-temperature ladder compare their thresholds against: the hottest key in the TC/Tp/TG/Tg groups. Those groups include keys that are not core temperatures, so it reads a few degrees above the CPU row — it is not the same quantity. The Sensors page lists which key is which.": "What the mode curves, the sustained window and the high-temperature ladder compare their thresholds against: the hottest key in the TC/Tp/TG/Tg groups. Those groups include keys that are not core temperatures, so it reads a few degrees above the CPU row — it is not the same quantity. The Sensors page lists which key is which.",
+  "Which step of the high-temperature protection ladder is holding the fans right now.": "Which step of the high-temperature protection ladder is holding the fans right now.",
+  "Actual is the fan's own counter (F{index}Ac). Target is what it was last told (F{index}Tg): the mode's target, the current step of a ramp, or the system's own value while a hands-off mode is selected — so the two differing means a write is in flight, or failed and is being retried.": "Actual is the fan's own counter (F{index}Ac). Target is what it was last told (F{index}Tg): the mode's target, the current step of a ramp, or the system's own value while a hands-off mode is selected — so the two differing means a write is in flight, or failed and is being retried."
 }

@@ -15,6 +15,14 @@ final class AppState: ObservableObject {
     @Published var activeProfile: FanProfile = .silent
     @Published var monitorState: MonitorState = .idle
     @Published var maxTemp: Float?
+    /// The temperature the fan logic compares its thresholds against: the hottest key in the
+    /// `TC`/`Tp`/`TG`/`Tg` groups. It is deliberately not the CPU row — those groups include
+    /// keys that are not core temperatures, so it reads a few degrees higher (measured 3.1–9.6
+    /// on Mac16,1). Shown on the Fans page because it is the one number that explains what the
+    /// fans do, and nothing else displayed it. See docs/sensor-list-plan.md.
+    var controlBasisTemp: Float? { latestStatus?.safetyPeakTemp }
+    /// Which step of the high-temperature protection ladder is holding the fans, if any.
+    var protectionStage: HighTempProtection.Stage { monitor?.protectionStage ?? .off }
     /// High-temperature protection: a graduated fan ladder (docs/high-temp-protection-plan.md).
     /// On by default; off means it never runs. Read through `object(forKey:)` rather than
     /// `bool(forKey:)`, which reports a missing key as false and would ship it off.
