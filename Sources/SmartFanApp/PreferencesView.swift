@@ -103,6 +103,16 @@ struct FansPreferences: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Who controls the fans comes first: it answers "what is going on right now",
+            // and everything below either explains it or changes it.
+            HStack(spacing: 6) {
+                Text(language.text("Status")).foregroundStyle(.secondary)
+                Spacer()
+                monitorStateLabel
+            }
+
+            Divider()
+
             // Alerts, in priority order: fan control is impossible without the daemon;
             // a terminal hold means the app is intentionally not controlling.
             if appState.daemonUnreachable {
@@ -163,16 +173,6 @@ struct FansPreferences: View {
                     .disabled(!appState.highTempProtection)
                 hint(language.text("Default leaves the fans to the system, so it is left alone."))
                     .padding(.leading, 16)
-            }
-
-            Divider()
-
-            // Live state: the mode above is the user's choice; this is what the
-            // monitor is actually doing (a safety override or idle shows up here).
-            HStack(spacing: 6) {
-                Text(language.text("Status")).foregroundStyle(.secondary)
-                Spacer()
-                monitorStateLabel
             }
 
             Divider()
