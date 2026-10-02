@@ -67,14 +67,32 @@ public struct ThermalStatus: Encodable {
     /// Average of the fans whose `F{i}Ac` read succeeded. nil when none read, so a
     /// single failed fan read never drags the average down.
     public let fanRPM: Float?
+    /// Every probed key's value as the SMC reported it, whether or not `SMCSensorFilter`
+    /// kept it. `temperatures` is the kept subset. For the preferences' sensor list, which
+    /// has to be able to show a dropped reading — and for nothing else: no reading and no
+    /// fan decision looks at this.
+    public let rawTemperatures: [String: Float]
+    /// Why a probed key has no usable reading. A key in neither this nor `rawTemperatures`
+    /// is simply not published on this Mac.
+    public let sensorDrops: [String: SensorDrop]
+
+    /// The wire format is unchanged: these two are for the preferences' sensor list only, and
+    /// the daemon's status JSON (and the CLI's `status` output) has no use for ~66 raw keys.
+    enum CodingKeys: String, CodingKey {
+        case fans, temperatures, averageTemp, batteryTemp, fanRPM
+    }
 
     public init(fans: [FanStatus], temperatures: [String: Float],
-                averageTemp: Float? = nil, batteryTemp: Float? = nil, fanRPM: Float? = nil) {
+                averageTemp: Float? = nil, batteryTemp: Float? = nil, fanRPM: Float? = nil,
+                rawTemperatures: [String: Float] = [:],
+                sensorDrops: [String: SensorDrop] = [:]) {
         self.fans = fans
         self.temperatures = temperatures
         self.averageTemp = averageTemp
         self.batteryTemp = batteryTemp
         self.fanRPM = fanRPM
+        self.rawTemperatures = rawTemperatures
+        self.sensorDrops = sensorDrops
     }
 
     public struct FanStatus: Encodable {
@@ -361,9 +379,13 @@ public final class FanControl {
     ]
 
     /// The CPU (TC/Tp) and GPU (TG/Tg) subset the thermal safety floor watches —
-    /// derived from `thermalKeys` so it can't drift from what `status()` reports.
-    public static let safetyTempKeys: [String] =
-        thermalKeys.filter { key in ["TC", "Tp", "TG", "Tg"].contains { key.hasPrefix($0) } }
+    /// derived from `thermalKeys` so it can't drift from what `status()` reports, and
+    /// from `SensorRole` so the key list and the sensor catalogue agree on what drives
+    /// the fan logic (the `Te*` efficiency cores are deliberately not watched: upstream's
+    /// list, kept as is because changing it moves every tuned threshold at once).
+    public static var safetyTempKeys: [String] {
+        thermalKeys.filter(SensorRole.isControlBasis)
+    }
 
     /// Read one temperature key, decoding by returned size (flt 4-byte or ioft 8-byte).
     /// nil if absent, wrong size, or out of the sane 0–150°C range. Does NOT lock — the
@@ -379,19 +401,35 @@ public final class FanControl {
     /// battery rejection filter. `readTemp` wraps this with the filter; the battery
     /// ("feels-like") metric calls it directly, because battery sensors are exactly
     /// what `readTemp` rejects.
-    func readRawTemp(_ key: String) -> Float? {
+    /// What one raw read produced, before `SMCSensorFilter` has its say. The distinction
+    /// matters to the preferences' sensor list, which shows a dropped reading and why;
+    /// `readRawTemp` collapses it to the usable value alone.
+    enum RawSensorRead: Equatable {
+        case value(Float)
+        /// The key read, but outside the sane 0–150 °C range: a placeholder or junk.
+        case outOfRange(Float)
+        /// No such key on this Mac, or a size this decoder does not handle.
+        case unreadable
+    }
+
+    func readRawSensor(_ key: String) -> RawSensorRead {
         let result = smc.readKey(key)
-        guard result.success else { return nil }
+        guard result.success else { return .unreadable }
         let temp: Float
         if result.size == 4 {
             temp = smcBytesToFloat(result.bytes, size: result.size)
         } else if result.size == 8 {
             temp = ioftBytesToFloat(result.bytes)
         } else {
-            return nil
+            return .unreadable
         }
-        guard temp > 0, temp < 150 else { return nil }
-        return (temp * 10).rounded() / 10
+        guard temp > 0, temp < 150 else { return .outOfRange(temp) }
+        return .value((temp * 10).rounded() / 10)
+    }
+
+    func readRawTemp(_ key: String) -> Float? {
+        if case .value(let temp) = readRawSensor(key) { return temp }
+        return nil
     }
 
     /// Battery temperature keys read for the "feels-like" metric. `TB0T` is the
@@ -441,9 +479,29 @@ public final class FanControl {
         // means on hardware we haven't verified.
         // Probe every known thermal key (flt/ioft decoded by size in readTemp). Keys
         // that don't exist on this machine return nil and are skipped.
+        // Every probed key is accounted for, not just the ones that survive: the
+        // preferences' sensor list has to show a dropped reading and say why, and the CLI's
+        // `discover` shows the raw SMC. The two disagreeing without a reason is exactly what
+        // makes a sensor list untrustworthy. No extra SMC traffic: this is the same read
+        // `readTemp` already made.
         var temps: [String: Float] = [:]
+        var raw: [String: Float] = [:]
+        var drops: [String: SensorDrop] = [:]
         for key in Self.thermalKeys {
-            if let t = readTemp(key) { temps[key] = t }
+            switch readRawSensor(key) {
+            case .unreadable:
+                continue                       // absent on this Mac: nothing to show or drop
+            case .outOfRange(let value):
+                raw[key] = value
+                drops[key] = .outOfRange(value)
+            case .value(let value):
+                raw[key] = value
+                if let rejection = SMCSensorFilter.rejection(key, value) {
+                    drops[key] = rejection == .batteryKey ? .batteryKey : .belowDieFloor
+                } else {
+                    temps[key] = value
+                }
+            }
         }
 
         let averageTemp = temps.isEmpty ? nil : temps.values.reduce(0, +) / Float(temps.count)
@@ -452,7 +510,8 @@ public final class FanControl {
         return ThermalStatus(fans: fans, temperatures: temps,
                              averageTemp: averageTemp,
                              batteryTemp: readBatteryTemp(),
-                             fanRPM: fanRPM)
+                             fanRPM: fanRPM,
+                             rawTemperatures: raw, sensorDrops: drops)
     }
 
     // MARK: - Discover

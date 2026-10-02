@@ -39,8 +39,10 @@ extension ThermalStatus {
     ]
 
     /// Validated core keys for this Mac's chip; empty when there is no table
-    /// for it, which keeps the prefix grouping.
-    static let validatedCoreKeys: Set<String> = {
+    /// for it, which keeps the prefix grouping. Public because it is the per-chip
+    /// knowledge `SensorRole` classifies keys with, and the preferences' sensor list
+    /// passes it in.
+    public static let validatedCoreKeys: Set<String> = {
         var size = 0
         guard sysctlbyname("machdep.cpu.brand_string", nil, &size, nil, 0) == 0, size > 0 else { return [] }
         var brand = [CChar](repeating: 0, count: size)

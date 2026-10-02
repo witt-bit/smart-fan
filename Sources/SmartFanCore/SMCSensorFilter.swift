@@ -36,11 +36,24 @@ enum SMCSensorFilter {
 
     static func accepts(_ key: String, _ temperature: Float,
                         batteryKeys: Set<String> = SMCSensorFilter.batteryKeys) -> Bool {
-        if batteryKeys.contains(key) { return false }
+        rejection(key, temperature, batteryKeys: batteryKeys) == nil
+    }
+
+    /// Why a reading was dropped, or nil when it was kept. The preferences' sensor list
+    /// shows the reason beside the value: a key that reads something and is not used has to
+    /// say why, or the list looks like it is hiding readings.
+    enum Rejection: Equatable, Sendable {
+        case batteryKey
+        case belowDieFloor
+    }
+
+    static func rejection(_ key: String, _ temperature: Float,
+                          batteryKeys: Set<String> = SMCSensorFilter.batteryKeys) -> Rejection? {
+        if batteryKeys.contains(key) { return .batteryKey }
         if temperature < minimumDieTemperature, dieSensorPrefixes.contains(where: { key.hasPrefix($0) }) {
-            return false
+            return .belowDieFloor
         }
-        return true
+        return nil
     }
 
     // MARK: - IOHID Lookup
