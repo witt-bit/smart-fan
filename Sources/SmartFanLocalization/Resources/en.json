@@ -104,6 +104,6 @@
   "{count} sensors read on this Mac.": "{count} sensors read on this Mac.",
   "No calibrated core table for this chip: CPU keys are grouped by prefix.": "No calibrated core table for this chip: CPU keys are grouped by prefix.",
   "Ignored": "Ignored",
-  "CPU derived": "CPU derived",
-  "Power": "Power"
+  "Power": "Power",
+  "CPU, not a core": "CPU, not a core"
 }

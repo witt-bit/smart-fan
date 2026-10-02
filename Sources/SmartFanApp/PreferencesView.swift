@@ -521,7 +521,7 @@ struct SensorPreferences: View {
         guard row.drop == nil else { return "Ignored" }
         switch row.role.kind {
         case .cpuCore, .cpuPrefix: return "CPU"
-        case .cpuDerived: return "CPU derived"
+        case .cpuDerived: return "CPU, not a core"
         case .gpu: return "GPU"
         case .memory: return "RAM"
         case .ssd: return "SSD"
@@ -544,7 +544,7 @@ private struct SensorRow: View {
         HStack(spacing: 10) {
             Text(language.text(category))
                 .foregroundStyle(.secondary)
-                .frame(width: 74, alignment: .leading)
+                .frame(width: 92, alignment: .leading)
             Text(reading.key)
                 .font(.system(.callout, design: .monospaced))
             Spacer(minLength: 8)

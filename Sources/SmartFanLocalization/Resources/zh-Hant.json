@@ -12,7 +12,7 @@
   "Battery temperature." : "電池溫度。",
   "Built from source? Run  git pull && ./scripts/setup.sh" : "從源碼構建？運行  git pull && ./scripts/setup.sh",
   "CPU" : "CPU",
-  "CPU derived" : "CPU 派生",
+  "CPU, not a core" : "CPU 非核心",
   "Check for Updates" : "檢查更新",
   "Checking…" : "檢查中…",
   "Compact" : "簡潔",

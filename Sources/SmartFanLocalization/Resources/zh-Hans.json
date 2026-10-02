@@ -104,6 +104,6 @@
   "{count} sensors read on this Mac.": "本机读取到 {count} 个传感器。",
   "No calibrated core table for this chip: CPU keys are grouped by prefix.": "本机芯片没有校准表，CPU 键按前缀分组。",
   "Ignored": "已忽略",
-  "CPU derived": "CPU 派生",
-  "Power": "供电"
+  "Power": "供电",
+  "CPU, not a core": "CPU 非核心"
 }
