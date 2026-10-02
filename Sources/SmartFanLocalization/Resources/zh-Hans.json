@@ -84,5 +84,13 @@
   "High-temperature protection": "高温防护",
   "Half fan speed above 90 °C for 10 s, full above 95 °C for 30 s.": "高于 90 °C 持续 10 秒后转速一半；高于 95 °C 持续 30 秒后转速最大。",
   "Also in Default mode": "在「默认」模式也生效",
-  "Default leaves the fans to the system, so it is left alone.": "「默认」把风扇交给系统，所以默认不干预。"
+  "Default leaves the fans to the system, so it is left alone.": "「默认」把风扇交给系统，所以默认不干预。",
+  "The speed this fan is actually turning, read from its own SMC counter.": "该风扇的实际转速，读取自它自己的 SMC 计数器。",
+  "Hottest CPU core, from the core sensors calibrated for this chip — not the SoC hotspot keys, which read 10–13 °C higher.": "最热的 CPU 核心。用按本机芯片校准的核心传感器键，不含 SoC 热点键（后者高 10–13 °C）。",
+  "Hottest GPU sensor (TG*, Tg*).": "最热的 GPU 传感器（TG*、Tg*）。",
+  "Hottest memory sensor (TRDX, Tm*, TMVR).": "最热的内存传感器（TRDX、Tm*、TMVR）。",
+  "Hottest SSD sensor (TH*).": "最热的 SSD 传感器（TH*）。",
+  "Hottest ambient sensor (TAOL, TA0P).": "最热的环境传感器（TAOL、TA0P）。",
+  "Arithmetic mean of every readable sensor, the battery, ambient and SSD included.": "所有可读传感器的算术平均，包含电池、环境与 SSD。",
+  "Battery temperature (TB0T/TB1T/TB2T and the IOHID battery keys); blank on Macs with no readable battery sensor.": "电池温度（TB0T/TB1T/TB2T 与 IOHID 电池键）；无电池传感器的机型不显示。"
 }

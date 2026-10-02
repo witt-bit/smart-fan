@@ -180,7 +180,8 @@ struct FansPreferences: View {
             if let status = appState.latestStatus {
                 ForEach(status.fans, id: \.index) { fan in
                     LabeledValue(language.text("Fan {index}", ["index": String(fan.index)]),
-                                 value: language.text("{rpm} RPM", ["rpm": String(fan.actualRPM)]))
+                                 value: language.text("{rpm} RPM", ["rpm": String(fan.actualRPM)]),
+                                 hint: language.text("The speed this fan is actually turning, read from its own SMC counter."))
                 }
                 // CPU and GPU use the panel's own definitions in Core, not a raw prefix
                 // sweep: the `TC`/`Tp` groups also carry derived keys that read 10–13 °C
@@ -188,13 +189,24 @@ struct FansPreferences: View {
                 // bar headline is computed from the same core reading. Measured before this
                 // change the row sat 0.3–10.7 °C (usually 7–10) above the headline.
                 // See docs/upstream-divergence.md and docs/thermal-sensor-calibration-20260924.md.
-                LabeledValue(language.text("CPU"), value: format(status.displayedCPUTemp))
-                LabeledValue(language.text("GPU"), value: format(status.displayedGPUTemp))
-                LabeledValue(language.text("RAM"), value: temp(prefixes: ["TR", "Tm", "TM"], status: status))
-                LabeledValue(language.text("SSD"), value: temp(prefixes: ["TH"], status: status))
-                LabeledValue(language.text("Ambient"), value: temp(prefixes: ["TA"], status: status))
-                LabeledValue(language.text("Average"), value: format(status.averageTemp))
-                LabeledValue(language.text("Feels-like"), value: format(status.batteryTemp))
+                //
+                // The ⓘ on each row names the sensors behind the number and how they are
+                // combined, so a reading that differs from another app can be traced
+                // without reading the source.
+                LabeledValue(language.text("CPU"), value: format(status.displayedCPUTemp),
+                             hint: language.text("Hottest CPU core, from the core sensors calibrated for this chip — not the SoC hotspot keys, which read 10–13 °C higher."))
+                LabeledValue(language.text("GPU"), value: format(status.displayedGPUTemp),
+                             hint: language.text("Hottest GPU sensor (TG*, Tg*)."))
+                LabeledValue(language.text("RAM"), value: temp(prefixes: ["TR", "Tm", "TM"], status: status),
+                             hint: language.text("Hottest memory sensor (TRDX, Tm*, TMVR)."))
+                LabeledValue(language.text("SSD"), value: temp(prefixes: ["TH"], status: status),
+                             hint: language.text("Hottest SSD sensor (TH*)."))
+                LabeledValue(language.text("Ambient"), value: temp(prefixes: ["TA"], status: status),
+                             hint: language.text("Hottest ambient sensor (TAOL, TA0P)."))
+                LabeledValue(language.text("Average"), value: format(status.averageTemp),
+                             hint: language.text("Arithmetic mean of every readable sensor, the battery, ambient and SSD included."))
+                LabeledValue(language.text("Feels-like"), value: format(status.batteryTemp),
+                             hint: language.text("Battery temperature (TB0T/TB1T/TB2T and the IOHID battery keys); blank on Macs with no readable battery sensor."))
             } else {
                 Text(language.text("Reading sensors...")).foregroundStyle(.secondary)
             }
@@ -498,17 +510,56 @@ struct AboutPreferences: View {
 private struct LabeledValue: View {
     let label: String
     let value: String
+    /// Where the value comes from and how it is aggregated. nil hides the ⓘ.
+    let hint: String?
 
-    init(_ label: String, value: String) {
+    init(_ label: String, value: String, hint: String? = nil) {
         self.label = label
         self.value = value
+        self.hint = hint
     }
 
     var body: some View {
-        HStack {
+        HStack(spacing: 6) {
             Text(label).foregroundStyle(.secondary)
             Spacer()
             Text(value).font(.system(.body, design: .monospaced))
+            HintButton(text: hint)
         }
     }
+}
+
+/// The ⓘ at the end of a reading. A popover rather than a tooltip: an explanation has to
+/// survive the pointer moving in order to read it.
+private struct HintButton: View {
+    let text: String?
+    @StateObject private var state = HintState()
+
+    var body: some View {
+        if let text {
+            Button { state.shown.toggle() } label: {
+                Image(systemName: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $state.shown) {
+                Text(text)
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 280, alignment: .leading)
+                    .padding(12)
+            }
+        } else {
+            // Keep the column: a row without a hint still reserves the ⓘ's width, so the
+            // values above and below it stay aligned.
+            Image(systemName: "info.circle").font(.caption).opacity(0)
+        }
+    }
+}
+
+/// One per hint button: `@State` is a macro this toolchain cannot load (see
+/// PreferencesSelection).
+private final class HintState: ObservableObject {
+    @Published var shown = false
 }

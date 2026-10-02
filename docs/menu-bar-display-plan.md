@@ -596,3 +596,15 @@ bash scripts/setup.sh      # 安装后手动验：菜单栏各样式 / 右键切
   它们是"现在发生了什么"，不是设置项。
 - **实现**：`MenuBarDisplayConfig.unitDisplayApplies` / `curveSettingsApply` 正是上面第二类条件，
   视图直接 `bind` 到它们，不各自重算。
+
+### 2026-10-02：读数行加 ⓘ，并把 CPU/GPU 行接回校准定义
+
+- **ⓘ 提示**：风扇/CPU/GPU/RAM/SSD/环境/均温/体感 每行末尾一个 `info.circle`，
+  点击弹出气泡，写明**取自哪些 SMC 键**与**如何合并**（取最大值还是求平均）。
+  用气泡而非悬停提示：说明要能一边移动鼠标一边读。ⓘ 用弱色（`.tertiary`），
+  没有提示的行保留同宽占位，保证数值仍成一列。
+- **顺带修正**：CPU/GPU 两行改用 `ThermalStatus.displayedCPUTemp` / `displayedGPUTemp`
+  （校准过的核心键），不再用 `TC*/Tp*` 原始前缀取最大值 —— 后者含高 10–13 °C 的派生键，
+  实测与菜单栏数字差 **0.3–10.7 °C**。这是 `6de8019` 删除旧下拉菜单时丢掉的修正，
+  详见 [upstream-divergence.md](upstream-divergence.md)。
+- **还留着**：均温口径（待定，见 [todo.md](todo.md)）与安全层仍用原始前缀扫描（计划文档 §5）。

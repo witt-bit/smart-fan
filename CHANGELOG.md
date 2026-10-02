@@ -38,6 +38,10 @@ First release under the SmartFan name. Built on ThermalForge 0.2.3 plus the MacF
   auto — instead of the monitor's own idle state, which read as "the fan is idle" beside a
   spinning fan.
 - The temperature unit is a checkbox that says what it does: **Use °F**.
+- **Every reading explains itself.** Each row on the Fans page carries an ⓘ naming the
+  sensors behind the number and how they are combined — which is how "CPU" can be traced to
+  the calibrated core keys rather than the SoC hotspot keys, and the average to every
+  readable sensor rather than anything else.
 - Switching modes **acts at once** rather than waiting out the sustained window (4-8 s), the
   ramp **continues from the fans' current speed** instead of dropping to minimum first, and
   a **10 s cooldown** stops modes being flipped back and forth. Default is exempt: it is the
