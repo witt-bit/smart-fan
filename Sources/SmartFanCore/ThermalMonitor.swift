@@ -260,20 +260,30 @@ public final class ThermalMonitor: @unchecked Sendable {
         // It also owns the decision about whether to act at all — off means never, and
         // a mode that hands the fans to the system is left alone unless the user asks
         // otherwise (docs/high-temp-protection-plan.md).
-        let action = protection.evaluate(temp: maxTemp,
+        //
+        // The ladder watches the calibrated reading — the hottest real CPU core and the GPU —
+        // and NOT `safetyPeakTemp`, which is what the mode curves use. That value is the
+        // maximum over the `TC`/`Tp`/`TG`/`Tg` prefixes, so it includes keys that read 3–10 °C
+        // above any core, and it swings across a threshold in two-second bursts. Measured over
+        // 60 s: median 90.8 °C, longest run above 95 °C of 2 s, longest below 90 °C of 23 s —
+        // so the ladder could neither escalate nor release, and held half speed indefinitely
+        // while the real cores sat at 85.6 °C. Falls back to the old value only on a Mac whose
+        // sensors it cannot identify.
+        let protectionTemp = status.displayedPeakTemp ?? maxTemp
+        let action = protection.evaluate(temp: protectionTemp,
                                          elapsed: TimeInterval(tickInterval),
                                          handedOff: activeProfile.curve.handsOff,
                                          settings: protectionSettings)
         if case .stop = action {
             logger?.safety(
-                "Protection released: \(String(format: "%.1f", maxTemp))°C — fans back to \(activeProfile.name)")
+                "Protection released: \(String(format: "%.1f", protectionTemp))°C — fans back to \(activeProfile.name)")
         }
         if protection.isEngaged {
             // Re-asserted every engaged tick, not only on the step change: the helper
             // writes only when the step changed or the previous write is unconfirmed, so a
             // failed write is retried and a held step costs nothing. The selected mode must
             // not fight the step, hence the early return.
-            applyProtectionSpeed(protection.stage == .fullSpeed ? 1.0 : 0.5, temp: maxTemp)
+            applyProtectionSpeed(protection.stage == .fullSpeed ? 1.0 : 0.5, temp: protectionTemp)
             if tickCounter % Self.uiUpdateCadence == 0 {
                 onUpdate?(status, activeProfile, state)
             }

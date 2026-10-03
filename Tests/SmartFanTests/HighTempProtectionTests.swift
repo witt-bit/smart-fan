@@ -81,14 +81,16 @@ struct HighTempProtectionTests {
         #expect(ladder.stage == .halfSpeed)
     }
 
-    @Test("At half speed, thirty seconds below 90 °C stops the ladder")
+    @Test("At half speed, thirty seconds below the release line stops the ladder")
+    // The release line is 5 °C under the entry point: a reading that sits on the entry point
+    // would otherwise hold half speed forever, which is what happened in the field.
     func halfSpeedStops() {
         var ladder = HighTempProtection()
         engagedAtHalfSpeed(&ladder)
         // The step is held for its full window even though the reading has fallen.
-        #expect(advance(&ladder, temp: 85, seconds: 29) == .none)
+        #expect(advance(&ladder, temp: 84, seconds: 29) == .none)
         #expect(ladder.stage == .halfSpeed)
-        #expect(advance(&ladder, temp: 85, seconds: 1) == .stop)
+        #expect(advance(&ladder, temp: 84, seconds: 1) == .stop)
         #expect(ladder.stage == .off)
     }
 
@@ -134,7 +136,7 @@ struct HighTempProtectionTests {
         actions.append(advance(&ladder, temp: 91, seconds: 10))    // half
         actions.append(advance(&ladder, temp: 97, seconds: 30))    // full
         actions.append(advance(&ladder, temp: 92, seconds: 30))    // half
-        actions.append(advance(&ladder, temp: 86, seconds: 30))    // stop
+        actions.append(advance(&ladder, temp: 84, seconds: 30))    // stop
         #expect(actions == [.halfSpeed, .fullSpeed, .halfSpeed, .stop])
         #expect(ladder.stage == .off)
     }

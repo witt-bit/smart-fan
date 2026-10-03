@@ -71,6 +71,14 @@ public struct HighTempProtection {
     public static let fullHold: TimeInterval = 30
     /// Minimum time each step is held before it may step down again.
     public static let stepHold: TimeInterval = 30
+    /// How far below `startTemp` the reading has to fall before a step may stop.
+    ///
+    /// Without a gap the stop line sits exactly where the reading sits when the machine is
+    /// working hard: measured over 60 s on Mac16,1 the reading's median was 90.8 °C, 55 % of
+    /// samples were above the line, and its longest run below it was 23 s against the 30 s the
+    /// stop needs — so a ladder that could engage could never release. A gap of 5 °C is what
+    /// the single-threshold latch upstream replaced used, and it is what makes the stop reachable.
+    public static let releaseGap: Float = 5
     /// How long the reading may sit below a threshold before that hold restarts.
     ///
     /// Without it a single 100 ms sample below the line threw away a nearly-complete
@@ -163,11 +171,11 @@ public struct HighTempProtection {
                 inStage = 0
                 return .fullSpeed
             }
-            // Re-decide once the step has been held. Below the entry point the ladder is
+            // Re-decide once the step has been held. Below the release line the ladder is
             // finished; in the 90–95 band the half-speed step runs another window.
             if inStage >= Self.stepHold - Self.tolerance {
                 inStage = 0
-                if temp < Self.startTemp {
+                if temp < Self.startTemp - Self.releaseGap {
                     reset()
                     return .stop
                 }

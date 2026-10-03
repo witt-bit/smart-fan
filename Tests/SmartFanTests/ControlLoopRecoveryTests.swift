@@ -562,6 +562,30 @@ struct MonitorRecoveryTests {
         #expect(commands.last == .resetAuto)
     }
 
+    @Test("The ladder watches the cores, not the derived keys that read high")
+    func protectionBasisIsTheCores() {
+        let f = ControlFixture()
+        let monitor = f.monitor(.silent)
+        monitor.setProtection(.init(enabled: true, runsWhileHandedOff: true))
+        var commands: [FanCommand] = []
+        monitor.onFanCommand = { commands.append($0) }
+
+        // A derived key at 95 °C with the hottest real core at 80 °C. The old basis — the
+        // maximum over the whole `TC`/`Tp`/`TG`/`Tg` prefixes — would hold half speed here,
+        // which is what left the fans running on a machine whose cores were cool.
+        f.smc.set("Tp0W", floatToSMCBytes(95))
+        f.smc.set("Tp01", floatToSMCBytes(80))
+        f.tick(monitor, count: 300)
+        #expect(commands.isEmpty)
+        #expect(monitor.state == .idle)
+
+        // A genuinely hot core still engages, so the change narrowed the basis rather than
+        // raising the thresholds.
+        f.smc.set("Tp01", floatToSMCBytes(92))
+        f.tick(monitor, count: 100)
+        #expect(monitor.state == .safetyOverride)
+    }
+
     @Test("A hands-off mode is not overridden unless the user asks for it")
     func handsOffNotOverridden() {
         let f = ControlFixture()
@@ -616,7 +640,7 @@ struct MonitorRecoveryTests {
         f.smc.temperature = 92
         f.tick(monitor, count: 300)
         #expect(f.smc.float("F0Tg") == 3000)     // back to half, not straight off
-        f.smc.temperature = 85
+        f.smc.temperature = 84
         f.tick(monitor, count: 300)
         #expect(monitor.state == .idle)
         #expect(f.smc.float("F0Tg") == 0)

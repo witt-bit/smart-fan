@@ -62,6 +62,10 @@ First release under the SmartFan name. Built on ThermalForge 0.2.3 plus the MacF
   means the fans belong to the system, not to a second controller fighting it).
 - The background service's own emergency floor moved above the ladder's range (105 °C),
   so the two can no longer pre-empt each other on the same fan.
+- **The ladder watches the CPU's real cores and the GPU**, not the value the mode curves use —
+  that one carries keys reading 3–10 °C above any core, and it sits on the threshold while the
+  machine works, which held half speed on a machine whose cores were cool. It also releases
+  5 °C below the point it engages, so a working machine can actually stop it.
 
 ### Sensors
 

@@ -98,6 +98,19 @@ threshold and tolerates dips of up to three seconds, because a single 100 ms sam
 below the line used to throw away a nearly-complete window. Off means never, and a
 hands-off mode is left alone unless the user asks otherwise.
 
+Two things the ladder does deliberately that upstream's latch did not, both from the same
+field report (docs/high-temp-protection-plan.md §7):
+
+- **It watches the calibrated reading** (`displayedPeakTemp`), not the value the mode curves
+  use. That one is the maximum over the `TC`/`Tp`/`TG`/`Tg` prefixes, so it carries keys that
+  read 3–10 °C above any core and swings across a threshold in two-second bursts; measured
+  over 60 s its median was 90.8 °C with a longest run above 95 °C of 2 s and below 90 °C of
+  23 s, so a ladder on that basis could neither escalate nor release. The curves are left on
+  it: they are upstream's, and their thresholds were tuned against it.
+- **The stop line is 5 °C under the entry line** (85 °C against 90 °C), the same gap the
+  latch it replaced used. Without it the stop line lands exactly where the reading sits while
+  the machine works, and half speed is held indefinitely.
+
 ### The daemon's floor sits above the ladder
 
 `ThermalFloor` engaged at 95 °C whenever it was holding the fans below max — the same
