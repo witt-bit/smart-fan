@@ -24,6 +24,9 @@ final class StatusItemController {
     /// being shown. The menu/`performClick` pairing is the canonical way to give a
     /// status item a context menu, but it must never recurse.
     private var isShowingMenu = false
+    /// The light/dark scheme the current image was drawn for, so an appearance notification
+    /// that changes nothing cannot start another repaint (see the KVO below).
+    private var renderedScheme: ColorScheme?
 
     /// Left click — open the preferences window.
     var onLeftClick: (() -> Void)?
@@ -72,7 +75,15 @@ final class StatusItemController {
         // non-template and must pick its foreground per appearance). KVO on the
         // button's effectiveAppearance — AppKit posts no notification for this.
         appearanceObservation = statusItem.button?.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
-            Task { @MainActor in self?.refresh() }
+            Task { @MainActor in
+                // Only repaint when the *answer* changed. Assigning the image is itself enough
+                // to make AppKit re-resolve the button's appearance, so refreshing on every
+                // notification fed itself: measured, one refresh became ~4,900 a second, and
+                // that was the whole of a "SmartFan uses a lot of CPU" report. The
+                // NSAppearance instance changes far more often than the light/dark answer does.
+                guard let self, self.needsRepaintForAppearance else { return }
+                self.refresh()
+            }
         }
 
         refresh()
@@ -108,10 +119,20 @@ final class StatusItemController {
 
     // MARK: - Rendering
 
+    /// Whether the button's resolved scheme differs from the one the current image was drawn
+    /// for. False for an appearance notification that changes nothing — the common case, and
+    /// the one that must not trigger a repaint.
+    private var needsRepaintForAppearance: Bool {
+        guard let button = statusItem.button else { return false }
+        let isDark = button.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return (isDark ? ColorScheme.dark : .light) != renderedScheme
+    }
+
     private func refresh() {
         guard let button = statusItem.button else { return }
         let isDark = button.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         let scheme: ColorScheme = isDark ? .dark : .light
+        renderedScheme = scheme
 
         let config = appState.displayConfig
         let needsWarning = appState.daemonVersionMismatch != nil || appState.daemonUnreachable

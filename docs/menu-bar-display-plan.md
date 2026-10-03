@@ -608,3 +608,33 @@ bash scripts/setup.sh      # 安装后手动验：菜单栏各样式 / 右键切
   实测与菜单栏数字差 **0.3–10.7 °C**。这是 `6de8019` 删除旧下拉菜单时丢掉的修正，
   详见 [upstream-divergence.md](upstream-divergence.md)。
 - **还留着**：均温口径（待定，见 [todo.md](todo.md)）与安全层仍用原始前缀扫描（计划文档 §5）。
+
+### 2026-10-04：状态项自触发重绘，空转 90% 单核
+
+用户回报"SmartFan 自身 CPU 占用比较高"。定位过程与结论：
+
+- **采样剖析**：主线程 43% 的时间在 AppKit 的
+  `__NSFireDelayedPerform → -[NSStatusItem _updateReplicantsUnlessMenuIsTracking:] →
+  _redrawReplicantSnapshot → _cacheDisplayInRect`，即**对状态项按钮做软件快照**；
+  而我们自己的 `StatusItemController.refresh` 只占 3 个样本
+- **最小复现**：裸 `NSStatusItem` 探针，重设图片 2Hz 仅 0.4–0.9%、10Hz 也才 2% ——
+  **说明不是状态项本身贵，是我们的 app 触发得太频繁**
+- **加计数器**（临时探针）：`refresh()` **4,900 次/秒**，而 monitor tick 只有 10 次/秒
+- **消融实验**：去掉 `effectiveAppearance` 的 KVO 后降到 **6.4 次/秒** → 元凶确认
+
+**成因**：`refresh()` 里 `button.image = …` 会让 AppKit 重新解析按钮的 appearance →
+KVO 触发 → 再次 `refresh()` → 自激循环，每秒五千次，每次都要给整个按钮视图树做快照。
+
+**修法**：KVO 回调里先判断**解析出的明暗方案**是否真的变了（比较 `ColorScheme`，
+而不是 `NSAppearance` 实例 —— 实例变得远比答案频繁）。
+
+**结果**（同一测法、同一负载）：
+
+| | 进程 CPU |
+|---|---|
+| 修复前 | **90%** 单核 |
+| 修复后 | **0.5%** 单核 |
+
+> ⚠️ 陷阱记录：**任何"在 KVO/通知回调里重建视图"的写法，只要重建本身会再次触发同一种通知，
+> 就是自激循环**。这里尤其隐蔽，因为 `refresh()` 看起来只读状态、只写 button.image。
+> 回归验证只能靠实测速率（`SMARTFAN_DIAG` 那套临时计数器，已移除）。

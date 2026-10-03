@@ -67,6 +67,13 @@ First release under the SmartFan name. Built on ThermalForge 0.2.3 plus the MacF
   machine works, which held half speed on a machine whose cores were cool. It also releases
   5 °C below the point it engages, so a working machine can actually stop it.
 
+### Performance
+
+- **The menu bar repainted about 5,000 times a second.** Assigning the status item's image
+  makes AppKit re-resolve the button's appearance, and the observer that repaints on an
+  appearance change therefore fed itself; over the app's life that was ~90 % of a CPU core,
+  against 0.5 % now. It repaints only when the light/dark answer actually changes.
+
 ### Sensors
 
 - **A Sensors page** lists every SMC key this Mac reports: what it belongs to, its key, and
