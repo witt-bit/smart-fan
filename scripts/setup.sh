@@ -492,6 +492,28 @@ cmd_package() {
     say "   校验和：$out/SHA256SUMS"
 }
 
+# 把当前版本与发行包的 sha256 写进 tap 里的 cask。发版流程的最后一步：
+# 先在这里生成产物，再把同样两个文件上传到对应的 release，cask 才会通过校验。
+cmd_cask() {
+    local tap="${1:-$REPO_ROOT/../homebrew-taphub}"
+    # cask 名是小写带连字符（Homebrew 的约定），与 app 名 SmartFan 不同。
+    local cask_file="$tap/Casks/smart-fan.rb"
+    [ -f "$cask_file" ] || die "找不到 cask：$cask_file（可指定 tap 目录：scripts/setup.sh cask <目录>）"
+    cmd_package
+    local version sha arch
+    version="$(app_version)"
+    arch="$(uname -m)"
+    sha="$(awk 'NR==1 {print $1}' "$REPO_ROOT/dist/SHA256SUMS" 2>/dev/null)"
+    [ ${#sha} -eq 64 ] || die "读取 SHA256SUMS 失败：$REPO_ROOT/dist/SHA256SUMS"
+    /usr/bin/sed -i '' -E "s|^  version \".*\"|  version \"$version\"|" "$cask_file"
+    /usr/bin/sed -i '' -E "s|^  sha256 \".*\"|  sha256 \"$sha\"|" "$cask_file"
+    ok "已更新 cask：$cask_file"
+    say "   版本   $version"
+    say "   sha256 $sha"
+    say "   把 dist/${APP_NAME}-${version}-macos-${arch}.tar.gz 与 dist/SHA256SUMS 上传到 v${version} 的 release，"
+    say "   cask 就与之对应（brew install --cask 才能通过校验，否则会报 checksum mismatch）。"
+}
+
 cmd_icon() {
     step "生成图标"
     require_cmd iconutil "图标工具缺失，请安装 Xcode 命令行工具。"
@@ -567,6 +589,7 @@ ${APP_NAME} — 开发与维护脚本   (脚本版本 ${SCRIPT_VERSION}，应用
 发布与维护
   package [输出目录]        生成 dist/*.tar.gz 与 SHA256SUMS（默认 dist/）
   icon                      重新生成应用图标
+  cask [tap 目录]           打包，并把版本与 sha256 写进 tap 里的 cask
   l10n                      从简体中文重生成繁体中文并校验
   cli <参数…>               用构建好的 CLI（例如：cli status）
   clean                     删除 .build 与 dist
@@ -633,6 +656,7 @@ doctor) cmd_doctor "$@" ;;
 logs) cmd_logs "$@" ;;
 package) cmd_package "$@" ;;
 icon) cmd_icon "$@" ;;
+cask) cmd_cask "$@" ;;
 l10n) cmd_l10n "$@" ;;
 cli) cmd_cli "$@" ;;
 clean) cmd_clean "$@" ;;

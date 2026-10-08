@@ -209,6 +209,7 @@ scripts/setup.sh install          # 编译、组装、安装、打开
 scripts/setup.sh reinstall        # 强制覆盖安装
 scripts/setup.sh uninstall [-f]   # 卸载（-f 连数据一起删）
 scripts/setup.sh package          # 生成本地发行包到 dist/
+scripts/setup.sh cask [tap 目录]   # 打包并把版本与 sha256 写进 tap 里的 cask
 scripts/setup.sh cli <参数…>      # 用构建好的命令行工具，例如 cli status
 ```
 
