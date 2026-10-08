@@ -26,7 +26,11 @@ import AppKit
 
 // MARK: - Input
 
-/// Optional `--master <png> --preview <dir>` so a candidate mark can be rendered and looked at
+/// This script is no longer how the shipped icon is made: `assets/logo/AppIcon.appiconset`
+/// carries a hand-tuned variant per size, which is the only way to get a legible 16 px — this
+/// renders one master at every size, so its small sizes are mush. Kept for experiments and
+/// previews. `--master <file> --preview <dir>` renders a candidate beside the shipped icon
+/// without touching it.
 /// without touching the shipped one or the default preview directory.
 func argument(_ name: String) -> String? {
     guard let index = CommandLine.arguments.firstIndex(of: name),
@@ -34,7 +38,7 @@ func argument(_ name: String) -> String? {
     return CommandLine.arguments[index + 1]
 }
 
-var masterPath = argument("--master") ?? "assets/logo/smart-fan-mark.svg"
+var masterPath = argument("--master") ?? "assets/logo/svg/logo-symbol.svg"
 /// Small sizes come from a simplified master when one is given: a mark with this much detail
 /// cannot survive 16 px (measured: its typical stroke is 6–7 % of its width, i.e. 0.6 px at
 /// 16 px), and shrinking is not the same as simplifying. Below this pixel size the simplified

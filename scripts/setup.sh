@@ -492,6 +492,23 @@ cmd_package() {
 cmd_icon() {
     step "生成图标"
     require_cmd iconutil "图标工具缺失，请安装 Xcode 命令行工具。"
+    # 图标由 assets/logo/AppIcon.appiconset 提供（每个尺寸一份，小尺寸是简化版）。
+    # scripts/generate-icon.swift 是从母版现算各尺寸的老路径，保留给试验用，
+    # 不再参与发布——它无法产出"小尺寸简化版"。
+    local appiconset="$REPO_ROOT/assets/logo/AppIcon.appiconset"
+    if [ -d "$appiconset" ]; then
+        # iconutil only accepts a directory whose name ends in .iconset, and Xcode's own
+        # convention is .appiconset — so the artwork is copied under a staging name rather
+        # than renamed, which would stop Xcode opening the original.
+        local staging
+        staging="$(mktemp -d)/AppIcon.iconset"
+        mkdir -p "$staging"
+        cp "$appiconset"/*.png "$staging/"
+        iconutil -c icns "$staging" -o "$REPO_ROOT/${APP_NAME}.icns" || die "无法生成 icns"
+        rm -rf "$(dirname "$staging")"
+        ok "已生成 ${APP_NAME}.icns（来自 assets/logo/AppIcon.appiconset 的 10 个尺寸）"
+        return 0
+    fi
     swift "$REPO_ROOT/scripts/generate-icon.swift"
     iconutil -c icns "$REPO_ROOT/${APP_NAME}.iconset" -o "$REPO_ROOT/${APP_NAME}.icns"
     ok "已生成 ${APP_NAME}.icns"

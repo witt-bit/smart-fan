@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bladeRim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#258bdf"/>
+      <stop offset="0.58" stop-color="#269be7"/>
+      <stop offset="1" stop-color="#2388d9"/>
+    </linearGradient>
+    <linearGradient id="bladeFace" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#30afe4"/>
+      <stop offset="1" stop-color="#2ca7e1"/>
+    </linearGradient>
+    <linearGradient id="hub" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#87a9a3"/>
+      <stop offset="1" stop-color="#608a8c"/>
+    </linearGradient>
+  </defs>
+
+  <g id="background">
+    <rect width="1024" height="1024" fill="#eaf2fd"/>
+  </g>
+
+  <g id="foreground">
+    
+    <path fill="url(#bladeRim)" d="M470 417
+      C438 362 429 286 424 237
+      C421 193 397 170 357 170
+      C307 168 249 209 206 260
+      C161 314 136 385 134 443
+      C131 504 151 553 188 587
+      C219 616 255 623 299 617
+      C365 607 422 575 465 544
+      Z"/>
+    <path fill="url(#bladeFace)" d="M466 414
+      C436 355 429 284 424 238
+      C422 194 396 171 357 171
+      C309 169 251 211 208 261
+      C169 306 148 359 151 417
+      C153 463 177 501 218 526
+      C255 550 296 560 329 550
+      C376 537 402 503 414 463
+      C424 433 444 417 466 414 Z"/>
+
+    
+    <path fill="url(#bladeRim)" d="M494 397
+      C490 337 497 266 526 215
+      C553 168 603 147 650 149
+      C712 148 765 180 809 227
+      C860 281 888 354 890 421
+      C892 470 879 508 846 529
+      C823 545 798 541 767 525
+      C727 504 678 490 610 483
+      Z"/>
+    <path fill="url(#bladeFace)" d="M549 401
+      C549 328 561 278 600 239
+      C629 209 667 196 706 196
+      C762 195 813 235 848 292
+      C879 344 891 393 889 446
+      C889 487 872 517 844 531
+      C819 544 797 535 765 521
+      C725 502 676 490 609 483
+      Z"/>
+
+    
+    <path fill="url(#bladeRim)" d="M606 511
+      C662 533 716 572 746 618
+      C772 660 770 715 752 761
+      C727 825 666 859 592 870
+      C516 881 439 867 381 838
+      C337 817 313 785 317 749
+      C319 725 332 706 351 691
+      C400 653 444 618 469 572
+      Z"/>
+    <path fill="url(#bladeFace)" d="M471 574
+      C444 624 397 662 351 695
+      C329 711 317 730 317 754
+      C316 788 341 816 383 837
+      C437 864 514 876 575 870
+      C643 864 686 818 695 753
+      C704 691 684 625 638 599
+      C618 587 595 580 569 579
+      Z"/>
+
+    
+    <circle cx="517" cy="489" r="98" fill="#477d83"/>
+    <circle cx="517" cy="489" r="95" fill="url(#hub)"/>
+    <circle cx="518" cy="490" r="61" fill="#c4d0bb"/>
+    <circle cx="518" cy="490" r="58" fill="#dce3cf"/>
+  </g>
+</svg>

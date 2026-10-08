@@ -1,38 +1,39 @@
-# Logo
+# Logo 与图标
 
-| 文件 | 作用 |
+## 文件
+
+| 路径 | 作用 |
 |---|---|
-| `smart-fan-mark.svg` | **图标母版**，`scripts/generate-icon.swift` 用它生成所有尺寸 |
-| `smart-fan-mark.png` | 最初生成的原稿（1254×1254，白底），仅留档 |
-| `preview/` | 每次生成时的预览（可随时重跑得到，已 gitignore） |
+| `AppIcon.appiconset/` | **图标来源**：10 个尺寸（16/32/128/256/512 各 @1x @2x），小尺寸是单独简化过的版本 |
+| `svg/logo.svg` | 完整标志（6 路径 / 4 色，1024 视框） |
+| `svg/logo-symbol.svg` | 图形符号（用于菜单栏等场合） |
+| `svg/logo-mono-black.svg` · `logo-mono-white.svg` | **单色版**，菜单栏模板图用 |
+| `icon-source/` | Icon Composer 源文件（Background/Foreground + icon.json），用于重新导出 appiconset |
+| `品牌包说明.md` | 原始品牌包自带的说明 |
 
-## 当前的图标外观
-
-**透明底**：图标就是图形本身，没有底块——四角透明，因此在 Dock / Finder 里
-呈现的是图形轮廓，而不是一个方块。图形占底块位宽的 92%。
-
-母版由 VTracer 从原稿描摹而来（199 条路径、约 170 种抗锯齿色），所以它是
-**矢量**：任何尺寸都按几何重建，不会因放大而模糊。描摹保留的是原造型
-（7 个分离元素、笔画占 6%），因此 **16px 仍然偏细** —— 这是造型问题，不是分辨率问题。
-
-## 更换图标
+## 生成图标
 
 ```bash
-# 1) 放一张新母版（同时改 scripts/generate-icon.swift 的默认路径，或用 --master 指定）
-#    要求：白底或透明底的**图形本身**（不要底块、不要文字），≥1024px，图形内部不要有封闭白区
-swift scripts/generate-icon.swift --master 新母版.svg --preview assets/logo/preview
-open assets/logo/preview/zoom-16px.png      # 先看小尺寸
-scripts/setup.sh icon                       # 确认后生成 icns
-scripts/setup.sh app                        # 装配
+scripts/setup.sh icon    # 从 AppIcon.appiconset 生成 SmartFan.icns
+scripts/setup.sh app     # 装配到 .app
 ```
 
-可选参数：`--tile light|none|#RRGGBB`（默认 `none` 透明）、`--tint #RRGGBB`（把图形改成单色）、
-`--fill 0…1`（图形占位宽比例，默认 0.92）、`--small-master`（小尺寸用简化母版）。
+`iconutil` 只接受**目录名以 `.iconset` 结尾**，而 Xcode 的约定是 `.appiconset` ——
+所以 `setup.sh icon` 会先复制到临时目录再用 `iconutil`，不改动原始文件（否则 Xcode 打不开它）。
+
+## 为什么不用 `scripts/generate-icon.swift`
+
+那个脚本**用一个母版渲染所有尺寸**，因此 16px 必然是糊的（图形细节在 16px 下只有亚像素）。
+它已降级为试验/预览工具：`swift scripts/generate-icon.swift --master <文件> --preview <目录>`。
+正式图标请用 `AppIcon.appiconset` —— 里面每个尺寸是分别设计/简化的。
+
+## 校验（改图标后跑一下）
+
+```bash
+rm -rf /tmp/c.iconset && iconutil -c iconset SmartFan.icns -o /tmp/c.iconset
+# 每帧尺寸必须等于其名字声明的像素，且四角 alpha 必须为 0（macOS 不会替你加圆角）
+```
 
 ## 回退
 
-旧图标仍在 git 历史里：
-
-```bash
-git show fd75a59:SmartFan.icns > SmartFan.icns   # 旧橙色风扇图标
-```
+旧图标在 git 历史里：`git show <上一个提交>:SmartFan.icns > SmartFan.icns`
