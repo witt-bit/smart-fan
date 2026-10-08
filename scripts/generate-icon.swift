@@ -26,9 +26,23 @@ import AppKit
 
 // MARK: - Input
 
-let masterPath = "assets/logo/smart-fan-mark.png"
-let iconsetPath = "SmartFan.iconset"
-let previewPath = "assets/logo/preview"
+/// Optional `--master <png> --preview <dir>` so a candidate mark can be rendered and looked at
+/// without touching the shipped one or the default preview directory.
+func argument(_ name: String) -> String? {
+    guard let index = CommandLine.arguments.firstIndex(of: name),
+          index + 1 < CommandLine.arguments.count else { return nil }
+    return CommandLine.arguments[index + 1]
+}
+
+var masterPath = argument("--master") ?? "assets/logo/smart-fan-mark.png"
+/// Small sizes come from a simplified master when one is given: a mark with this much detail
+/// cannot survive 16 px (measured: its typical stroke is 6–7 % of its width, i.e. 0.6 px at
+/// 16 px), and shrinking is not the same as simplifying. Below this pixel size the simplified
+/// master is used; above it, the detailed one. Apple's own icons ship the same split.
+let smallMasterPath = argument("--small-master")
+let smallMasterMaxPixels = 64
+let iconsetPath = argument("--iconset") ?? "SmartFan.iconset"
+let previewPath = argument("--preview") ?? "assets/logo/preview"
 
 /// How much of the tile's width the mark takes at its longest side. Three previews are
 /// written at the values around this one so the size can be judged rather than guessed.
@@ -135,12 +149,27 @@ func savePNG(_ image: NSImage, to path: String) {
 // MARK: - Build
 
 let mark = loadMark()
+let smallMark = smallMasterPath.map { path -> CGImage in
+    // loadMark() reads `masterPath`; borrow it for a second file by swapping the variable.
+    let saved = masterPath
+    masterPath = path
+    let image = loadMark()
+    masterPath = saved
+    return image
+}
 
 try? FileManager.default.removeItem(atPath: iconsetPath)
 try! FileManager.default.createDirectory(atPath: iconsetPath, withIntermediateDirectories: true)
+/// The mark to draw at a given pixel size: the simplified one below the split, the detailed
+/// one above it.
+func markFor(pixels: Int) -> CGImage {
+    (pixels <= smallMasterMaxPixels ? smallMark : nil) ?? mark
+}
 for size in [16, 32, 128, 256, 512] {
-    savePNG(renderIcon(px: size, mark: mark), to: "\(iconsetPath)/icon_\(size)x\(size).png")
-    savePNG(renderIcon(px: size * 2, mark: mark), to: "\(iconsetPath)/icon_\(size)x\(size)@2x.png")
+    savePNG(renderIcon(px: size, mark: markFor(pixels: size)),
+            to: "\(iconsetPath)/icon_\(size)x\(size).png")
+    savePNG(renderIcon(px: size * 2, mark: markFor(pixels: size * 2)),
+            to: "\(iconsetPath)/icon_\(size)x\(size)@2x.png")
 }
 print("已生成 \(iconsetPath)（10 个尺寸）")
 
