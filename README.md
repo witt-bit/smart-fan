@@ -31,7 +31,27 @@
 
 ## 安装
 
-> 目前**只有从源码构建**这一条路：Homebrew cask 尚在准备中，本仓库也还没有发行包。
+要求 **macOS 14 或更高版本**，三种方式选一种即可。
+
+### 方式一：下载发行包
+
+1. 到 [Releases](https://github.com/witt-bit/smart-fan/releases/latest) 下载 `SmartFan-版本号-macos-arm64.tar.gz` 和 `SHA256SUMS`。请选发行包，不要选 GitHub 自动生成的 `Source code`。
+2. 解压后把 `SmartFan.app` 拖入「应用程序」。
+3. 打开应用，它会**请求一次管理员授权**来安装后台服务。
+
+想核对下载完整性，把两个文件放在同一目录后执行 `shasum -a 256 -c SHA256SUMS`。
+
+### 方式二：Homebrew
+
+```bash
+brew install --cask witt-bit/taphup/smart-fan
+```
+
+安装的是同一个应用，仍需首次运行时授权一次。卸载用 `brew uninstall --cask smart-fan`（后台服务由 root 拥有，需要手动清理，见 cask 的提示）。
+
+### 方式三：从源码构建
+
+前提：已安装 Xcode 16 或更新版本。
 
 ```bash
 git clone https://github.com/witt-bit/smart-fan.git
@@ -39,9 +59,9 @@ cd smart-fan
 ./scripts/setup.sh install
 ```
 
-这条命令会编译源码、组装应用、把它安装到 `/Applications`，并在首次运行时**请求一次管理员授权**来安装后台服务。之后应用与后台服务一起工作，日常使用不再需要密码。
+编译、组装、安装到 `/Applications` 一次完成，同样只在首次运行时请求一次授权。
 
-安装完成后：
+### 安装完成后
 
 - 应用位于 `/Applications/SmartFan.app`，**只显示菜单栏图标，不占 Dock**。
 - 需要登录后自动运行，在应用里勾选「登录时启动」。

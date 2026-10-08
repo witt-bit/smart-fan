@@ -473,7 +473,10 @@ cmd_package() {
     mkdir -p "$out"
     out="$(cd "$out" && pwd)"
     stage="$(mktemp -d "${TMPDIR:-/tmp}/smart-fan-release.XXXXXX")"
-    trap 'rm -rf "$stage"' EXIT
+    # `${stage:-}`: the trap outlives this function, and under `set -u` a bare "$stage"
+    # reported "stage: unbound variable" *after* a successful package — a scary line in a
+    # release log for no reason.
+    trap 'rm -rf "${stage:-}"' EXIT
     name="${APP_NAME}-${version}-macos-${arch}"
     step "打包 $name"
     mkdir -p "$stage/$name/bin"
