@@ -347,6 +347,8 @@ public final class DaemonServer {
     /// Guarded by stateLock.
     private var releasePending = false
     private let stateLock = NSLock()
+    /// SIGTERM handler (ThermalForge #31), created in run(); kept so the source is not released.
+    private var terminationSource: DispatchSourceSignal?
 
     /// Per-fan [min, max] RPM, cached at init (fixed hardware constants) for clamping
     /// `set`/`setfan` — so a hostile value can't drive the SMC out of range.
@@ -461,6 +463,14 @@ public final class DaemonServer {
     public func run() {
         guard let socketFD else { preconditionFailure("DaemonServer.run requires a bound socket") }
         NSLog("SmartFan daemon: listening on %@", SmartFanDaemon.socketPath)
+
+        // Start holding nothing, so release any manual control a killed daemon, a crash or a
+        // direct root write left behind — before any client can connect and before the floor
+        // and watchdog loops can act (ThermalForge #31).
+        reconcileFansAtStartup()
+
+        // Release our fans if we are told to stop (bootout, kill -TERM).
+        installTerminationHandler()
         // Start log maintenance even when no fan command has been issued.
         TFLogger.shared.daemon("Listening on \(SmartFanDaemon.socketPath)")
 
@@ -692,6 +702,64 @@ public final class DaemonServer {
     private var rootPort: io_connect_t = 0
     private var notifyPort: IONotificationPortRef?
     private var notifier: io_object_t = 0
+
+    // MARK: - Start and Stop (ported from ThermalForge #31)
+
+    /// Release fans a previous daemon — or a direct root SMC write made while none ran — left
+    /// under manual control. Nothing holds them at that point, so no watchdog, floor or wake
+    /// re-apply would ever touch them.
+    func reconcileFansAtStartup() {
+        smcLock.lock()
+        defer { smcLock.unlock() }
+        switch StartupFanReconcile.run(manualControlEngaged: { try fanControl.manualControlEngaged() },
+                                       resetAuto: { try fanControl.resetAuto() }) {
+        case .alreadyAuto:
+            break
+        case .reset:
+            NSLog("SmartFan daemon: fans were under manual control with no hold at startup; reset to auto")
+        case .resetAfterUnreadable:
+            NSLog("SmartFan daemon: couldn't read fan modes at startup; reset to auto as a precaution")
+        case .resetFailed(let error):
+            // The watchdog loop retries a pending release until it succeeds.
+            stateLock.lock(); releasePending = true; stateLock.unlock()
+            NSLog("SmartFan daemon: startup fan reset failed: %@, will retry", String(describing: error))
+        }
+    }
+
+    /// SIGTERM's default action kills the daemon with whatever hold it had still on the SMC. A
+    /// dispatch source runs the handler on a normal thread rather than in signal context, so
+    /// taking locks and writing the SMC is safe there.
+    private func installTerminationHandler() {
+        signal(SIGTERM, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .global(qos: .userInitiated))
+        source.setEventHandler { [self] in releaseFansAndExit() }
+        source.resume()
+        terminationSource = source
+    }
+
+    private func releaseFansAndExit() -> Never {
+        exit(releaseFansForShutdown() ? 0 : 1)
+    }
+
+    /// `smcLock` stays held after the release, so no request, watchdog, floor or wake re-apply
+    /// can write the SMC before the process exits. Lock order matches processFrame (smcLock,
+    /// then stateLock). Returns false only if a needed release failed.
+    @discardableResult
+    func releaseFansForShutdown() -> Bool {
+        smcLock.lock()
+        stateLock.lock()
+        let release = DaemonShutdown.releasesFans(holding: hold.command != nil,
+                                                  safetySuspended: safetySuspended,
+                                                  releasePending: releasePending)
+        hold = .none
+        safetySuspended = false
+        releasePending = false
+        stateLock.unlock()
+        guard release else { return true }
+        let ok = (try? fanControl.resetAuto()) != nil
+        NSLog("SmartFan daemon: stopping: %@", ok ? "released fans to auto" : "fan release failed")
+        return ok
+    }
 
     private func registerWakeNotification() {
         let refcon = Unmanaged.passUnretained(self).toOpaque()

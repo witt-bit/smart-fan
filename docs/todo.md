@@ -71,6 +71,32 @@
   - **我们是 cask，等价需求同样存在**：每次发版必须自动更新 cask 的版本与 `sha256`，否则用户 `brew upgrade` 拿不到新版
   - 建议纳入 P7.4
 
+### 批次 5 — 0.2.3.38 → 0.2.3.62（25 个版本，改动最大的一批）
+
+> 上游这段时间在**做和我们同类的事**：把首选项搬进设置窗口、给服务安装/替换写了一套新架构。
+> 架构部分**不可合并**（两边各有各的实现），但其中的**安全与正确性修复**值得移植。
+
+- [x] **守护进程启动/停止时释放风扇**（`4fc03b0`，ThermalForge #31）（本次）
+  - `StartupFanReconcile`：启动时若风扇处于手动但**无人持有** → 归位 auto（守护进程被杀、崩溃、
+    或无守护进程时被 root 直接写入的情形）
+  - `DaemonShutdown` + SIGTERM handler：bootout / kill 时释放自己持有的风扇，且**不碰不属于自己的**
+  - `FanControl.manualControlEngaged()`（任一风扇 manual 或 Ftst 仍置位）
+  - 测试 `DaemonStartStopTests`（6 项）一并移植
+  - **为什么我们也有这个问题**：app 的 `syncBackgroundService()` 会重启守护进程，而新进程
+    「不持有任何东西」→ 旧 hold 会永远留在 SMC 上（没有 watchdog/floor/wake 再碰它）
+- [ ] 🟠 **socket 对端认证**（`43f4a88`，加了又回滚后重新落地）—— **我们同样缺**：
+  `/var/run/smart-fan.sock` 目前同机其他用户也能连（socket 虽 chown 给属主 + 0600，
+  但内核不校验对端身份）。上游做法：连接时读对端 euid/egid，只放行 root 或属主，
+  读不到凭据一律拒绝。相关文件与我们同名（ConnectionServer/DaemonInvariants），可移植
+- [ ] 🟡 **`safetyPeakTemp` 把 `Te` 纳入**（上游已改）—— 我们的基仍是 `TC/Tp/TG/Tg`；
+  采纳需同步改 `SensorRole.controlPrefixes` 与相关文档
+- [ ] ⬜ **只看不抄：安装器可靠性**（`InstallationReliabilityTests` 315 行、`SafeFileCopy`、
+  `AppBundleReplacement`、`make install/daemon/sudo 命令安全可预测`、`recover failed installs and
+  stop unsafe removal`）—— 架构不同不合并，但里面的**失败模式清单**值得拿来审查我们的
+  `install`/`uninstall` 是否有同类缺陷
+- [ ] ⬜ **不合并**：上游的设置窗口/面板 UI 重构、网站（GitHub Pages 18 语言）、DMG 拖拽安装、
+  `MacFanPro.swift` CLI 重写、14 种语言的 56 条新文案（都是他们新 UI 的）
+
 ## 3. 更新检查功能（Phase 1 剩余）
 
 详见 [update-check-plan.md](update-check-plan.md)。已完成：手动检查按钮、检查中状态、结果行（`8e4ee16`）。

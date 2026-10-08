@@ -378,6 +378,32 @@ public final class FanControl {
         "TB0T",
     ]
 
+    // MARK: - Manual-Control Check
+
+    /// Whether a manual-control session is engaged at the SMC: any fan in manual mode, or
+    /// (M1–M4) `Ftst` still set, which keeps thermalmonitord off the fans even with every mode
+    /// back on auto. Throws when a key cannot be read, so the caller picks its own safe default
+    /// rather than this guessing "auto".
+    public func manualControlEngaged() throws -> Bool {
+        let count = try fanCount()
+        for i in 0..<count {
+            let modeKey = SMCFanKey.key(modeKeyTemplate, fan: i)
+            let result = smc.readKey(modeKey)
+            guard result.success, let mode = result.bytes.first else {
+                throw SmartFanError.readFailed(modeKey)
+            }
+            if mode == 1 { return true }   // 1 = manual (see readFanInfo)
+        }
+        if hasFtst {
+            let result = smc.readKey(SMCFanKey.forceTest)
+            guard result.success, let ftst = result.bytes.first else {
+                throw SmartFanError.readFailed(SMCFanKey.forceTest)
+            }
+            if ftst != 0 { return true }
+        }
+        return false
+    }
+
     /// The CPU (TC/Tp) and GPU (TG/Tg) subset the thermal safety floor watches —
     /// derived from `thermalKeys` so it can't drift from what `status()` reports, and
     /// from `SensorRole` so the key list and the sensor catalogue agree on what drives

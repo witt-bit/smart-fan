@@ -72,3 +72,51 @@ public struct ThermalFloor {
         return .engage
     }
 }
+
+// MARK: - Daemon start and stop (ported from upstream 0.2.3.54, ThermalForge #31)
+
+/// What a freshly started daemon does about the fans.
+///
+/// It starts holding nothing, so fans left under manual control — by a daemon killed
+/// mid-hold, a crash, or a direct root SMC write made while no daemon ran — would stay pinned
+/// with no thermal floor and no wake re-apply behind them. Release them to Apple. Adopting
+/// instead is not possible: the SMC records no owner, so a CLI hold cannot be told from a dead
+/// app's curve point, and per-fan targets do not fit one hold command.
+///
+/// The SMC access is injected, so this tests without root or hardware.
+public enum StartupFanReconcile {
+    public enum Outcome: Equatable {
+        case alreadyAuto
+        case reset
+        /// The SMC could not be read, so we reset anyway: auto is the safe state.
+        case resetAfterUnreadable
+        case resetFailed(String)
+    }
+
+    public static func run(manualControlEngaged: () throws -> Bool,
+                           resetAuto: () throws -> Void) -> Outcome {
+        let unreadable: Bool
+        do {
+            guard try manualControlEngaged() else { return .alreadyAuto }
+            unreadable = false
+        } catch {
+            unreadable = true
+        }
+        do {
+            try resetAuto()
+            return unreadable ? .resetAfterUnreadable : .reset
+        } catch {
+            return .resetFailed("\(error)")
+        }
+    }
+}
+
+/// What the daemon does on SIGTERM — a bootout, or a manual kill: release the fans only if it
+/// was controlling them, so it never touches fans it does not own. A pending release counts: a
+/// failed write it could not undo may have left the fans manual with no hold recorded.
+public enum DaemonShutdown {
+    public static func releasesFans(holding: Bool, safetySuspended: Bool,
+                                    releasePending: Bool = false) -> Bool {
+        holding || safetySuspended || releasePending
+    }
+}
