@@ -41,13 +41,22 @@ var masterPath = argument("--master") ?? "assets/logo/smart-fan-mark.png"
 /// master is used; above it, the detailed one. Apple's own icons ship the same split.
 let smallMasterPath = argument("--small-master")
 let smallMasterMaxPixels = 64
+/// `--tile none` leaves the icon transparent, so only the mark is visible; `--tile #RRGGBB`
+/// fills the rounded square with that colour instead of the default light gradient.
+let tileOption = argument("--tile") ?? "light"
+/// `--tint #RRGGBB` paints the mark a single flat colour — for a dark tile, where the mark's
+/// own dark blue would disappear.
+let tintOption = argument("--tint")
+/// How much of the tile's width the mark's *content* takes. The master's own margins are
+/// cropped away first, so this is the fraction that actually shows.
+var markFill = CGFloat(Double(argument("--fill") ?? "") ?? 0.92)
 let iconsetPath = argument("--iconset") ?? "SmartFan.iconset"
 let previewPath = argument("--preview") ?? "assets/logo/preview"
 
 /// How much of the tile's width the mark takes at its longest side. Three previews are
 /// written at the values around this one so the size can be judged rather than guessed.
 let markFraction: CGFloat = 0.64
-let previewFractions: [CGFloat] = [0.56, 0.64, 0.72]
+let previewFractions: [CGFloat] = [0.84, 0.92, 1.0]
 
 /// Apple's grid, as fractions of the canvas and of the tile.
 let tileFraction: CGFloat = 824.0 / 1024.0
@@ -82,7 +91,11 @@ func loadMark() -> CGImage {
         let r = Float(pixels[index]), g = Float(pixels[index + 1]), b = Float(pixels[index + 2])
         // 1 when the pixel matches the background, 0 when it is clearly ink.
         let distance = max(abs(r - corner.r), max(abs(g - corner.g), abs(b - corner.b)))
-        let coverage = min(1, max(0, distance / 48))
+        // The floor matters twice over: the master's white is not perfectly uniform (253–255
+        // against a corner of 253,255,255), so without it the "background" keeps alpha ≈ 10 —
+        // enough to wash the tile, and enough for the content crop below to count the whole
+        // canvas as the mark and crop nothing.
+        let coverage = min(1, max(0, (distance - 4) / 44))
         let alpha = UInt8((coverage * 255).rounded())
         // Un-premultiply, or the keyed copy would darken as alpha falls.
         pixels[index] = UInt8(min(255, Float(pixels[index]) / max(coverage, 0.004)))
@@ -91,18 +104,46 @@ func loadMark() -> CGImage {
         pixels[index + 3] = alpha
     }
     guard let keyed = context.makeImage() else { fatalError("无法生成透明母版") }
-    return keyed
+
+    // Crop to what is actually drawn. The master is delivered with roughly 12 % margin on
+    // each side (measured: the mark covers 75 % of its width, 59 % of its height), and scaling
+    // by the full canvas would silently shrink the result — the fraction below would mean
+    // something other than it says.
+    var minX = width, maxX = -1, minY = height, maxY = -1
+    for y in 0..<height {
+        for x in 0..<width where pixels[(y * width + x) * 4 + 3] > 8 {   // now a real threshold
+            minX = min(minX, x); maxX = max(maxX, x)
+            minY = min(minY, y); maxY = max(maxY, y)
+        }
+    }
+    guard maxX >= minX, maxY >= minY else { fatalError("母版里没有图形") }
+    guard let cropped = keyed.cropping(to: CGRect(x: minX, y: minY,
+                                                  width: maxX - minX + 1,
+                                                  height: maxY - minY + 1)) else {
+        fatalError("无法裁剪母版")
+    }
+    return cropped
+}
+
+/// #RRGGBB → NSColor, or nil when the option is absent.
+func colour(_ option: String?) -> NSColor? {
+    guard let option, option.hasPrefix("#"), option.count == 7,
+          let value = UInt32(option.dropFirst(), radix: 16) else { return nil }
+    return NSColor(srgbRed: CGFloat((value >> 16) & 0xFF) / 255,
+                   green: CGFloat((value >> 8) & 0xFF) / 255,
+                   blue: CGFloat(value & 0xFF) / 255, alpha: 1)
 }
 
 // MARK: - The icon
 
 /// One icon at one pixel size: shadow, tile, then the mark centred on it.
-func renderIcon(px: Int, mark: CGImage, fraction: CGFloat = markFraction) -> NSImage {
+func renderIcon(px: Int, mark: CGImage, fraction: CGFloat? = nil) -> NSImage {
     let side = CGFloat(px)
     let image = NSImage(size: NSSize(width: side, height: side))
     image.lockFocus()
     defer { image.unlockFocus() }
 
+    let fraction = fraction ?? markFill
     let tileSide = side * tileFraction
     let tile = NSRect(x: (side - tileSide) / 2, y: (side - tileSide) / 2,
                       width: tileSide, height: tileSide)
@@ -110,22 +151,28 @@ func renderIcon(px: Int, mark: CGImage, fraction: CGFloat = markFraction) -> NSI
                             xRadius: tileSide * cornerRadiusFraction,
                             yRadius: tileSide * cornerRadiusFraction)
 
-    // The tile: a near-white surface with the lightest of vertical gradients, so it does not
-    // read as a flat swatch at large sizes.
-    NSGraphicsContext.current?.saveGraphicsState()
-    let shadow = NSShadow()
-    shadow.shadowColor = NSColor(white: 0, alpha: 0.28)
-    shadow.shadowBlurRadius = side * 0.022
-    shadow.shadowOffset = NSSize(width: 0, height: -side * 0.012)
-    shadow.set()
-    NSGradient(colors: [NSColor(white: 1.0, alpha: 1),
-                        NSColor(white: 0.93, alpha: 1)])?.draw(in: path, angle: -90)
-    NSGraphicsContext.current?.restoreGraphicsState()
+    if tileOption != "none" {
+        // The tile: a near-white surface with the lightest of vertical gradients, so it does
+        // not read as a flat swatch at large sizes.
+        NSGraphicsContext.current?.saveGraphicsState()
+        let shadow = NSShadow()
+        shadow.shadowColor = NSColor(white: 0, alpha: 0.28)
+        shadow.shadowBlurRadius = side * 0.022
+        shadow.shadowOffset = NSSize(width: 0, height: -side * 0.012)
+        shadow.set()
+        let fill = colour(tileOption) ?? NSColor(white: 1.0, alpha: 1)
+        if colour(tileOption) != nil {
+            fill.setFill(); path.fill()
+        } else {
+            NSGradient(colors: [fill, NSColor(white: 0.93, alpha: 1)])?.draw(in: path, angle: -90)
+        }
+        NSGraphicsContext.current?.restoreGraphicsState()
 
-    // A hairline edge keeps the tile's boundary legible against a white background.
-    NSColor(white: 0, alpha: 0.06).setStroke()
-    path.lineWidth = max(1, side * 0.002)
-    path.stroke()
+        // A hairline edge keeps the tile's boundary legible against a white background.
+        NSColor(white: 0, alpha: 0.06).setStroke()
+        path.lineWidth = max(1, side * 0.002)
+        path.stroke()
+    }
 
     // The mark, centred, longest side at `fraction` of the tile.
     let markSide = tileSide * fraction
@@ -133,8 +180,17 @@ func renderIcon(px: Int, mark: CGImage, fraction: CGFloat = markFraction) -> NSI
     let size = NSSize(width: CGFloat(mark.width) * scale, height: CGFloat(mark.height) * scale)
     let rect = NSRect(x: (side - size.width) / 2, y: (side - size.height) / 2,
                       width: size.width, height: size.height)
-    NSGraphicsContext.current?.cgContext.draw(
-        mark, in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height))
+    let destination = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height)
+    if let tint = colour(tintOption), let context = NSGraphicsContext.current?.cgContext {
+        // Repaint the mark flat: its own alpha is the shape, the colour is the tint.
+        context.saveGState()
+        context.clip(to: destination, mask: mark)
+        context.setFillColor(tint.cgColor)
+        context.fill(destination)
+        context.restoreGState()
+    } else {
+        NSGraphicsContext.current?.cgContext.draw(mark, in: destination)
+    }
 
     return image
 }

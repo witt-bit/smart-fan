@@ -9,4 +9,5 @@ DerivedData/
 SmartFan.iconset/
 
 # 图标预览是生成物，可随时重跑 scripts/generate-icon.swift 得到
-assets/logo/preview/
+assets/logo/preview*/
+assets/logo/*.iconset/
