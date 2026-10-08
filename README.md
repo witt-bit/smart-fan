@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo/web/icon-192.png" width="120" alt="SmartFan">
+</p>
+
 # SmartFan
 
 [![CI](https://github.com/witt-bit/smart-fan/actions/workflows/ci.yml/badge.svg)](https://github.com/witt-bit/smart-fan/actions/workflows/ci.yml)
@@ -265,6 +269,7 @@ SmartFan 的 CPU、GPU 行显示对应传感器中的**最高值**，可与 Stat
 | [`Sources/SmartFanCLI/`](Sources/SmartFanCLI/) | CLI、应用组装、安装与卸载入口 |
 | [`Tests/SmartFanTests/`](Tests/SmartFanTests/) | 自动化测试 |
 | [`scripts/setup.sh`](scripts/setup.sh) | 开发与维护入口：编译、运行、测试、安装、卸载、打包、自检 |
+| [`assets/logo/`](assets/logo/) | 图标与品牌资源：macOS/iOS 图标集、网站图标、矢量 logo。见 [说明](assets/logo/README.md) |
 
 ### 构建与验证
 
