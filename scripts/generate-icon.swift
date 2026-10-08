@@ -26,7 +26,7 @@ import AppKit
 
 // MARK: - Input
 
-/// This script is no longer how the shipped icon is made: `assets/logo/AppIcon.appiconset`
+/// This script is no longer how the shipped icon is made: `assets/logo/macos/AppIcon.appiconset`
 /// carries a hand-tuned variant per size, which is the only way to get a legible 16 px — this
 /// renders one master at every size, so its small sizes are mush. Kept for experiments and
 /// previews. `--master <file> --preview <dir>` renders a candidate beside the shipped icon
