@@ -67,6 +67,11 @@ First release under the SmartFan name. Built on ThermalForge 0.2.3 plus the MacF
   machine works, which held half speed on a machine whose cores were cool. It also releases
   5 °C below the point it engages, so a working machine can actually stop it.
 
+### Icon
+
+- **A new app icon**, built from a vector master: transparent background, so the mark itself is
+  the icon rather than a tile. Every size is rendered from geometry, so nothing is scaled up.
+
 ### Performance
 
 - **The menu bar repainted about 5,000 times a second.** Assigning the status item's image

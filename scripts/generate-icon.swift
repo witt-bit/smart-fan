@@ -34,16 +34,17 @@ func argument(_ name: String) -> String? {
     return CommandLine.arguments[index + 1]
 }
 
-var masterPath = argument("--master") ?? "assets/logo/smart-fan-mark.png"
+var masterPath = argument("--master") ?? "assets/logo/smart-fan-mark.svg"
 /// Small sizes come from a simplified master when one is given: a mark with this much detail
 /// cannot survive 16 px (measured: its typical stroke is 6–7 % of its width, i.e. 0.6 px at
 /// 16 px), and shrinking is not the same as simplifying. Below this pixel size the simplified
 /// master is used; above it, the detailed one. Apple's own icons ship the same split.
 let smallMasterPath = argument("--small-master")
 let smallMasterMaxPixels = 64
-/// `--tile none` leaves the icon transparent, so only the mark is visible; `--tile #RRGGBB`
-/// fills the rounded square with that colour instead of the default light gradient.
-let tileOption = argument("--tile") ?? "light"
+/// `--tile none` — the default — leaves the icon transparent, so only the mark is visible.
+/// `--tile light` draws the near-white rounded square; `--tile #RRGGBB` fills it with a colour
+/// (usually with `--tint` to repaint the mark, which on a dark tile would otherwise vanish).
+let tileOption = argument("--tile") ?? "none"
 /// `--tint #RRGGBB` paints the mark a single flat colour — for a dark tile, where the mark's
 /// own dark blue would disappear.
 let tintOption = argument("--tint")
@@ -96,12 +97,16 @@ func loadMark() -> CGImage {
         // enough to wash the tile, and enough for the content crop below to count the whole
         // canvas as the mark and crop nothing.
         let coverage = min(1, max(0, (distance - 4) / 44))
-        let alpha = UInt8((coverage * 255).rounded())
-        // Un-premultiply, or the keyed copy would darken as alpha falls.
-        pixels[index] = UInt8(min(255, Float(pixels[index]) / max(coverage, 0.004)))
-        pixels[index + 1] = UInt8(min(255, Float(pixels[index + 1]) / max(coverage, 0.004)))
-        pixels[index + 2] = UInt8(min(255, Float(pixels[index + 2]) / max(coverage, 0.004)))
-        pixels[index + 3] = alpha
+        // The source is opaque, so its RGB is already un-premultiplied and the keyed pixel
+        // must be re-premultiplied: rgb × coverage, alpha = coverage. Getting this backwards
+        // (dividing the RGB by a coverage near zero) writes rgb = 255 with alpha = 0 — invalid
+        // in a premultiplied buffer, and CoreGraphics renders those pixels as solid white. That
+        // is what turned a "transparent" icon into a white rectangle with a fan on it.
+        let scale = Float(coverage)
+        pixels[index] = UInt8(min(255, (Float(pixels[index]) * scale).rounded()))
+        pixels[index + 1] = UInt8(min(255, (Float(pixels[index + 1]) * scale).rounded()))
+        pixels[index + 2] = UInt8(min(255, (Float(pixels[index + 2]) * scale).rounded()))
+        pixels[index + 3] = UInt8((scale * 255).rounded())
     }
     guard let keyed = context.makeImage() else { fatalError("无法生成透明母版") }
 
@@ -137,11 +142,22 @@ func colour(_ option: String?) -> NSColor? {
 // MARK: - The icon
 
 /// One icon at one pixel size: shadow, tile, then the mark centred on it.
-func renderIcon(px: Int, mark: CGImage, fraction: CGFloat? = nil) -> NSImage {
+///
+/// Rendered into an explicit bitmap rep rather than by `lockFocus()`. `lockFocus` follows the
+/// display's backing scale, so on this Mac every frame came out at twice the requested size —
+/// `icon_16x16.png` was 32 px — and an iconset whose sizes are all doubled is not a valid set.
+func renderIcon(px: Int, mark: CGImage, fraction: CGFloat? = nil) -> NSBitmapImageRep {
     let side = CGFloat(px)
-    let image = NSImage(size: NSSize(width: side, height: side))
-    image.lockFocus()
-    defer { image.unlockFocus() }
+    guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px,
+                                     bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                                     isPlanar: false, colorSpaceName: .deviceRGB,
+                                     bytesPerRow: 0, bitsPerPixel: 0),
+          let context = NSGraphicsContext(bitmapImageRep: rep) else {
+        fatalError("无法建立 \(px)px 画布")
+    }
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = context
+    defer { NSGraphicsContext.restoreGraphicsState() }
 
     let fraction = fraction ?? markFill
     let tileSide = side * tileFraction
@@ -192,14 +208,28 @@ func renderIcon(px: Int, mark: CGImage, fraction: CGFloat? = nil) -> NSImage {
         NSGraphicsContext.current?.cgContext.draw(mark, in: destination)
     }
 
-    return image
+    return rep
 }
 
-func savePNG(_ image: NSImage, to path: String) {
-    guard let tiff = image.tiffRepresentation,
-          let rep = NSBitmapImageRep(data: tiff),
-          let png = rep.representation(using: .png, properties: [:]) else { return }
+func savePNG(_ rep: NSBitmapImageRep, to path: String) {
+    guard let png = rep.representation(using: .png, properties: [:]) else { return }
     try! png.write(to: URL(fileURLWithPath: path))
+}
+
+/// A small icon magnified with nearest-neighbour, so the pixels are visible: this is the view
+/// that shows whether the mark survives at 16 pt.
+func zoom(_ rep: NSBitmapImageRep, by factor: Int) -> NSBitmapImageRep {
+    let size = rep.pixelsWide * factor
+    let wide = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size,
+                                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                                isPlanar: false, colorSpaceName: .deviceRGB,
+                                bytesPerRow: 0, bitsPerPixel: 0)!
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: wide)
+    NSGraphicsContext.current?.imageInterpolation = .none
+    rep.draw(in: NSRect(x: 0, y: 0, width: size, height: size))
+    NSGraphicsContext.restoreGraphicsState()
+    return wide
 }
 
 // MARK: - Build
@@ -237,16 +267,8 @@ for fraction in previewFractions {
     savePNG(renderIcon(px: 512, mark: mark, fraction: fraction), to: "\(previewPath)/mark-\(name).png")
 }
 for size in [16, 32, 64] {
-    let small = renderIcon(px: size, mark: mark)
-    // Nearest-neighbour, so the pixels are visible rather than smoothed away: this is the
-    // view that shows whether the mark survives at 16pt.
-    guard let tiff = small.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { continue }
-    let zoom = NSImage(size: NSSize(width: size * 12, height: size * 12))
-    zoom.lockFocus()
-    NSGraphicsContext.current?.imageInterpolation = .none
-    rep.draw(in: NSRect(x: 0, y: 0, width: size * 12, height: size * 12))
-    zoom.unlockFocus()
-    savePNG(zoom, to: "\(previewPath)/zoom-\(size)px.png")
+    savePNG(zoom(renderIcon(px: size, mark: markFor(pixels: size)), by: 12),
+            to: "\(previewPath)/zoom-\(size)px.png")
 }
 print("已生成预览 \(previewPath)/ —— mark-56/64/72.png（三种图形大小）与 zoom-16/32/64px.png（放大看小尺寸）")
 print("确认外观后运行 scripts/setup.sh icon 生成 SmartFan.icns")
