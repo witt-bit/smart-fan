@@ -84,10 +84,14 @@
   - 测试 `DaemonStartStopTests`（6 项）一并移植
   - **为什么我们也有这个问题**：app 的 `syncBackgroundService()` 会重启守护进程，而新进程
     「不持有任何东西」→ 旧 hold 会永远留在 SMC 上（没有 watchdog/floor/wake 再碰它）
-- [ ] 🟠 **socket 对端认证**（`43f4a88`，加了又回滚后重新落地）—— **我们同样缺**：
-  `/var/run/smart-fan.sock` 目前同机其他用户也能连（socket 虽 chown 给属主 + 0600，
-  但内核不校验对端身份）。上游做法：连接时读对端 euid/egid，只放行 root 或属主，
-  读不到凭据一律拒绝。相关文件与我们同名（ConnectionServer/DaemonInvariants），可移植
+- [x] **socket 对端认证**（`43f4a88`）（本次）
+  - `PeerAuthorizer`：连接时读对端 euid/egid（`getpeereid()`，取内核在 connect 时记录的
+    `LOCAL_PEERCRED` 副本，对端退出后仍有效），**只放行 root 或属主**；读不到凭据一律拒绝
+  - `ConnectionServer` 在 accept 之后、计数/包 DispatchIO 之前校验；被拒的 fd **一个字节都不读**，
+    直接 close 且不占并发槽位；拒绝日志限流（5 条突发后每分钟 1 条，被压条数随下一条带出）
+  - 认证器是**必需参数、无 allow-all 默认值**，避免"忘了注入"就得到未认证的服务端
+  - 测试 `PeerAuthTests`（6 项）：策略、`decide()` 映射、真实 socket 上的凭据读取、
+    **被拒对端收到 EOF 且处理函数从未运行**、放行的对端照常服务、日志限流
 - [ ] 🟡 **`safetyPeakTemp` 把 `Te` 纳入**（上游已改）—— 我们的基仍是 `TC/Tp/TG/Tg`；
   采纳需同步改 `SensorRole.controlPrefixes` 与相关文档
 - [ ] ⬜ **只看不抄：安装器可靠性**（`InstallationReliabilityTests` 315 行、`SafeFileCopy`、

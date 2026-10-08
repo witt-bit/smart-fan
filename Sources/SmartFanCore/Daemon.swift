@@ -489,7 +489,10 @@ public final class DaemonServer {
         // Accept connections concurrently (bounded) so one hung connection can't stall
         // others, and — the security fix — a slow-reading client can no longer hold
         // smcLock during the response write (processFrame takes it only around process()).
-        let server = ConnectionServer(listenFD: socketFD) { [self] body in processFrame(body) }
+        let server = ConnectionServer(listenFD: socketFD,
+                                       authorizer: PeerAuthorizer(ownerUID: ownerUID)) { [self] body in
+            processFrame(body)
+        }
         server.start()
         connectionServer = server
 
