@@ -995,12 +995,35 @@ struct Install: ParsableCommand {
         try load.run()
         load.waitUntilExit()
 
-        // Verify
-        Thread.sleep(forTimeInterval: 1.0)
-        guard SmartFanDaemon.isRunning else {
+        // Wait for the daemon to *answer*, not for a fixed second.
+        //
+        // `launchctl bootstrap` returns as soon as launchd has accepted the job, and the
+        // daemon still has to open the SMC — and, on an upgrade, win a socket the previous
+        // process may not have released yet, with `KeepAlive` restarting it until it does.
+        // A one-second sleep was enough on a warm machine and not on a busy one, so a
+        // perfectly good install reported "the background daemon didn't come up" and stopped
+        // before copying the app; that is the report this replaces. Polling also folds in the
+        // version check that used to follow, since an answer is the thing both checks wanted.
+        let deadline = Date().addingTimeInterval(20)
+        var liveDaemon: DaemonResponse?
+        var lastFailure = "no answer"
+        while Date() < deadline {
+            do {
+                let response = try DaemonClient().request(DaemonRequest(verb: .version))
+                if response.ok {
+                    liveDaemon = response
+                    break
+                }
+                lastFailure = "the daemon answered but would not report its version"
+            } catch {
+                lastFailure = "\(error)"
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        guard let liveDaemon else {
             throw ValidationError("""
-                The background daemon didn't come up after install, so the menu bar
-                app won't be able to control fans yet.
+                The background daemon didn't answer within 20 s of installing, so the menu bar
+                app won't be able to control fans yet. (Last attempt: \(lastFailure))
 
                 What to do:
                   1. Run it again:  sudo smart-fan install
@@ -1010,11 +1033,10 @@ struct Install: ParsableCommand {
                 """)
         }
 
-        // A registered process/socket alone can belong to a stale daemon. Confirm the
-        // live protocol reports the version we just installed before claiming success.
-        let liveDaemon = try DaemonClient().request(DaemonRequest(verb: .version))
-        guard liveDaemon.ok, liveDaemon.version == installVersion else {
-            throw ValidationError("The live daemon did not confirm installed version \(installVersion). Re-run the installer; the service may still be restarting.")
+        // A registered process/socket alone can belong to a stale daemon, so the answer has to
+        // name the version we just installed.
+        guard liveDaemon.version == installVersion else {
+            throw ValidationError("The live daemon reports \(liveDaemon.version ?? "no version") but \(installVersion) was just installed. Re-run the installer; the service may still be restarting.")
         }
 
         // Copy the menu bar app into /Applications. Homebrew's post_install is
